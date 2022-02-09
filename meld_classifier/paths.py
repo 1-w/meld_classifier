@@ -37,7 +37,7 @@ except (NoOptionError, NoSectionError) as e:
     FS_SUBJECTS_PATH = ""
 
 # paths to important data files - relative to BASE_PATH
-COMBAT_PARAMS_FILE = 'Combat_parameters.hdf5'
+COMBAT_PARAMS_FILE = 'Combat_parameters_6_with_H29.hdf5'
 NORM_CONTROLS_PARAMS_FILE = 'Norm_controls_parameters.hdf5'
 FINAL_SCALING_PARAMS = 'scaling_params_with0.json'
 
