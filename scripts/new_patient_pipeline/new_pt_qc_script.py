@@ -63,7 +63,7 @@ if __name__ == '__main__':
                     f.write(f'-v {pred_rh_file}:colormap=lut \n')
                 f.write(f'-f {subject_fs_folder}/surf/lh.white:edgecolor=yellow {subject_fs_folder}/surf/lh.pial:edgecolor=red {subject_fs_folder}/surf/rh.white:edgecolor=yellow {subject_fs_folder}/surf/rh.pial:edgecolor=red \n')
             #launch freeview
-            freeview = format(f"freeview -cmd {file_text}")
+            freeview = format(f"vglrun freeview -cmd {file_text}")
             command = ini_freesurfer + ';' + freeview
             print(f"INFO : Open freeview")
             sub.check_call(command, shell=True)
