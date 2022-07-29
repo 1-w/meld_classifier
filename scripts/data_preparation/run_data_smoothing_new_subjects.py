@@ -19,8 +19,9 @@ from meld_classifier.paths import BASE_PATH, NEWSUBJECTS_DATASET, CLIPPING_PARAM
 
 def create_dataset_file(subjects, output_path):
     df=pd.DataFrame()
-    subjects_id = [subject for subject in subjects]
-    df['subject_id']=subjects_id
+    subjects_id = [subject for subject in subjects] #????
+
+    df['subject_id']=subjects
     df['split']=['test' for subject in subjects]
     df.to_csv(output_path)
 
@@ -36,7 +37,7 @@ if __name__ == "__main__":
                         default=BASE_PATH)
     args = parser.parse_args()
     subject_ids = np.array(np.loadtxt(args.list_ids, dtype='str',ndmin=1))
-    output_dir = args.output_dir   
+    output_dir = args.output_dir
     dataset_newSubject = os.path.join(BASE_PATH, NEWSUBJECTS_DATASET)
 
     # Set features and smoothed values

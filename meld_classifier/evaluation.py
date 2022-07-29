@@ -90,8 +90,8 @@ class Evaluator:
                 subject_ids = test_ids
             self.patient_ids, self.control_ids = self.divide_subjects(subject_ids, n_controls=5)
             self.combined_ids = list(self.patient_ids) + list(self.control_ids)
-            if mode == "train":  
-                 #if we're training, i.e. optimising threshold, this is only done using patients
+            if mode == "train":
+                # if we're training, i.e. optimising threshold, this is only done using patients
                 self.combined_ids = self.patient_ids
             self.log.info(
                 f"Initialized Evaluation with mode {self.mode}, thresh {self.threshold} on {len(self.patient_ids)} patients and {len(self.control_ids)} controls"
@@ -543,9 +543,9 @@ class Evaluator:
                     data_dictionary[subj_id][f"{m}_{t}"] = np.zeros_like(data["input_features"])
                     if len(X) != 0:
                         if m == "integrated_gradients":
-                            res = integrated_gradients(self.experiment.model, X, targets, kwargs=ig_kwargs)
+                            res = integrated_gradients(self.experiment.model, X, targets.astype(int), kwargs=ig_kwargs)
                         elif m == "vanilla_backprop":
-                            res = vanilla_backprop(self.experiment.model, X, targets)
+                            res = vanilla_backprop(self.experiment.model, X, targets.astype(int))
                         else:
                             raise NotImplementedError(f"saliency method {m}")
                         data_dictionary[subj_id][f"{m}_{t}"][mask] = res
@@ -619,22 +619,25 @@ class Evaluator:
         else:
             mode = "r+"
         done = False
-        while not done:
-            try:
-                with h5py.File(filename, mode=mode) as f:
-                    self.log.info(f"saving {dataset_str} for {subject}")
-                    for i, hemi in enumerate(["lh", "rh"]):
-                        shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
-                        # create dataset
-                        dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
-                        # save prediction in dataset
-                        dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
-                        if dataset_str == "prediction":
-                            # save threshold as attribute in dataset
-                            dset.attrs["threshold"] = self.threshold
-                    done = True
-            except OSError:
-                done = False
+        # while not done:
+        try:
+            with h5py.File(filename, mode=mode) as f:
+                self.log.info(f"saving {dataset_str} for {subject}")
+                for i, hemi in enumerate(["lh", "rh"]):
+                    shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
+                    # create dataset
+                    dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
+                    # save prediction in dataset
+                    dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
+                    if dataset_str == "prediction":
+                        # save threshold as attribute in dataset
+                        dset.attrs["threshold"] = self.threshold
+                done = True
+                f.close()
+        except OSError:
+            print(f'ERROR encountered during saving {dataset_str} for {subject} ')
+            # done = False
+
 
     def per_subject_stats(self, subject, prediction, labels, fold=None, suffix=""):
         """calculate stats per subject.
@@ -670,15 +673,15 @@ class Evaluator:
             filename = os.path.join(self.save_dir, "results", f"test_results_{fold}{suffix}.csv")
 
         if os.path.isfile(filename):
-            done = False
-            while not done:
-                try:
-                    df = pd.read_csv(filename, index_col=False)
-                    df = df.append(sub_df, ignore_index=True)
-                    df.to_csv(filename, index=False)
-                    done = True
-                except pd.errors.EmptyDataError:
-                    done = False
+            # done = False
+            # while not done:
+            try:
+                df = pd.read_csv(filename, index_col=False)
+                df = df.append(sub_df, ignore_index=True)
+                df.to_csv(filename, index=False)
+                done = True
+            except pd.errors.EmptyDataError:
+                done = False
         else:
             sub_df.to_csv(filename, index=False)
         return

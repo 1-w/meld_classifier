@@ -232,11 +232,11 @@ if __name__ == "__main__":
     # Set up experiment
     parser = argparse.ArgumentParser(description="create mgh file with predictions from hdf5 arrays")
     parser.add_argument(
-        "--experiment-folder",
+        "--experiment_folder",
         help="Experiments folder",
     )
     parser.add_argument(
-        "--experiment-name",
+        "--experiment_name",
         help="subfolder to use, typically the ensemble model",
         default="ensemble_iteration",
     )

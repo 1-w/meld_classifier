@@ -1,26 +1,26 @@
-name: meld_classifier_newrelease
+name: meld_classifier_parallel
 channels:
   - defaults
   - pog87
   - conda-forge
 dependencies:
-  - python=3.7
-  - tensorflow=2.6
-  - pytest=6.2
-  - nibabel=3.2
-  - pillow=8.4
-  - jupyterlab=3.2
-  - ptitprince=0.2
-  - scikit-image=0.18
-  - h5py=3.1
-  - fpdf=1.7
-  - pip=21.2
+  - python
+  - tensorflow
+  - pytest
+  - nibabel
+  - pillow
+  - jupyterlab
+  - ptitprince
+  - scikit-image
+  - h5py
+  - fpdf
+  - pip
   - pip:
     - matplotlib_surface_plotting
-    - potpourri3d==0.0.4
+    - potpourri3d
 #    - umap-learn
-    - nilearn==0.8
-    - neuroCombat==0.2.12
-    - alibi==0.6
-    - patsy==0.5.2
-    - matplotlib==3.5.1
+    - nilearn
+    - neuroCombat
+    - alibi
+    - patsy
+    - matplotlib

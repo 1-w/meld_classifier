@@ -41,8 +41,6 @@ n_vert=163842
 cortex_label=nb.freesurfer.io.read_label(os.path.join(subject_dir,'fsaverage_sym/label/lh.cortex.label'))
 medial_wall = np.delete(np.arange(n_vert),cortex_label)
 
-
-
 for subject in subject_ids:
     print("saving subject " + subject + "...")
     io.save_subject(subject,features,medial_wall, subject_dir, output_dir)

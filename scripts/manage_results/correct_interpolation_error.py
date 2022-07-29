@@ -71,6 +71,10 @@ if __name__ == '__main__':
     subdir = args.dir 
     input_mgh=args.input
     output_mgh=args.output
-
-    input_surf=os.path.join(subdir,'surf','rh.white')
-    correct_interpolation_error(input_mgh,input_surf,output_mgh)
+    
+    try:
+        input_surf=os.path.join(subdir,'surf','rh.white')
+        correct_interpolation_error(input_mgh,input_surf,output_mgh)
+    except:
+        input_surf=os.path.join(subdir,'surf','lh.white')
+        correct_interpolation_error(input_mgh,input_surf,output_mgh)

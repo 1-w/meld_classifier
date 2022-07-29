@@ -1,4 +1,4 @@
-#Contains MeldCohort and MeldSubject classes
+# Contains MeldCohort and MeldSubject classes
 
 from contextlib import contextmanager
 from meld_classifier.paths import (
@@ -23,6 +23,7 @@ import scipy
 
 class MeldCohort:
     """Class to define cohort-level parameters such as subject ids, mesh"""
+
     def __init__(self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH):
         self.data_dir = data_dir
         self.hdf5_file_root = hdf5_file_root
@@ -135,14 +136,14 @@ class MeldCohort:
         if self._coords is None:
             surf = mt.load_mesh_geometry(os.path.join(self.data_dir, SURFACE_FILE))
             # spherical 2D coordinates. ignore radius
-        #    spherical_coords = mt.spherical_np(surf["coords"])[:, 1:]
+            #    spherical_coords = mt.spherical_np(surf["coords"])[:, 1:]
             # surf_coords_norm = (surf['coords']-np.min(surf['coords'],axis=0))/(np.max(surf['coords'],axis=0)-np.min(surf['coords'],axis=0))
-         #   norm_coords = (spherical_coords - np.min(spherical_coords, axis=0)) / (
-          #      np.max(spherical_coords, axis=0) - np.min(spherical_coords, axis=0)
-          #  )
+            #   norm_coords = (spherical_coords - np.min(spherical_coords, axis=0)) / (
+            #      np.max(spherical_coords, axis=0) - np.min(spherical_coords, axis=0)
+            #  )
             # round to have around 1500 unique coordinates
-          #  rounded_norm_coords = np.round(norm_coords * 5, 1) / 5
-            self._coords = surf["coords"] #rounded_norm_coords
+            #  rounded_norm_coords = np.round(norm_coords * 5, 1) / 5
+            self._coords = surf["coords"]  # rounded_norm_coords
         return self._coords
 
     def read_subject_ids_from_dataset(self):
@@ -475,7 +476,7 @@ class MeldSubject:
         if isinstance(feature_names, str):
             return_single = True
             feature_names = [feature_names]
-        df = pd.read_csv(csv_path, header=0, encoding="latin")
+        df = pd.read_csv(csv_path)
         # get index column
         id_col = None
         for col in df.keys():

@@ -37,53 +37,29 @@ def which_combat_file(site_code):
         sys.exit('No parameters for combat harmonisation were found for this site code. You need to harmonise your new data with the new_site_harmonisation_script.py before to run this script')
   
     
-if __name__ == "__main__":
-    #parse commandline arguments 
-    parser = argparse.ArgumentParser(description='data-processing on new subject ')
-    parser.add_argument('-ids','--list_ids',
-                        help='Subject ID.',
-                        required=True,)
-    parser.add_argument('-site', '--site_code', 
-                        type=str, 
-                        help='site code', 
-                         required=True,)
-    parser.add_argument('-d', '--output_dir', 
-                        type=str, 
-                        help='path to store hdf5 files',
-                        default=BASE_PATH)   
-    parser.add_argument("--withoutflair",
-						action="store_true",
-						default=False,
-						help="do not use flair information") 
-    args = parser.parse_args()
-    subject_ids = np.array(np.loadtxt(args.list_ids, dtype='str',ndmin=1))
-    output_dir = args.output_dir  
-    site_code = args.site_code   
+def process_new_subjects(subject_ids, site_code, output_dir, use_flair=True):
+  
     dataset_newSubject = os.path.join(BASE_PATH, NEWSUBJECTS_DATASET)
 
     # Set features and smoothed values
-    if args.withoutflair:
-        features = {
+
+    features = {
 		".on_lh.thickness.mgh": 10,
 		".on_lh.w-g.pct.mgh" : 10,
 		".on_lh.pial.K_filtered.sm20.mgh": None,
 		'.on_lh.sulc.mgh' : 5,
 		'.on_lh.curv.mgh' : 5,
-			}
-    else:
-        features = {
-		".on_lh.thickness.mgh": 10,
-		".on_lh.w-g.pct.mgh" : 10,
-		".on_lh.pial.K_filtered.sm20.mgh": None,
-		'.on_lh.sulc.mgh' : 5,
-		'.on_lh.curv.mgh' : 5,
-		'.on_lh.gm_FLAIR_0.25.mgh' : 10,
-		'.on_lh.gm_FLAIR_0.5.mgh' : 10,
-		'.on_lh.gm_FLAIR_0.75.mgh' : 10,
-		".on_lh.gm_FLAIR_0.mgh": 10,
-		'.on_lh.wm_FLAIR_0.5.mgh' : 10,
-		'.on_lh.wm_FLAIR_1.mgh' : 10,
-    			}
+	}
+    if use_flair:
+        features.update({
+            '.on_lh.gm_FLAIR_0.25.mgh' : 10,
+            '.on_lh.gm_FLAIR_0.5.mgh' : 10,
+            '.on_lh.gm_FLAIR_0.75.mgh' : 10,
+            ".on_lh.gm_FLAIR_0.mgh": 10,
+            '.on_lh.wm_FLAIR_0.5.mgh' : 10,
+            '.on_lh.wm_FLAIR_1.mgh' : 10,
+    	})
+
     feat = Feature()
     features_smooth = [feat.smooth_feat(feature, features[feature]) for feature in features]
     features_combat = [feat.combat_feat(feature) for feature in features_smooth]
@@ -92,7 +68,6 @@ if __name__ == "__main__":
     #create dataset
     create_dataset_file(subject_ids, dataset_newSubject)
     
-
     ### COMBAT DATA ###
     #-----------------------------------------------------------------------------------------------
     print('PROCESS 2 : COMBAT')
@@ -101,7 +76,7 @@ if __name__ == "__main__":
     #get combat parameters
     combat_params_file = which_combat_file(site_code)
     #create object combat
-    combat =Preprocess(c_smooth,
+    combat = Preprocess(c_smooth,
                        write_hdf5_file_root='{site_code}_{group}_featurematrix_combat.hdf5',
                        data_dir=output_dir)
     #features names
@@ -126,3 +101,31 @@ if __name__ == "__main__":
         print(feature)
         norm.intra_inter_subject(feature, params_norm = param_norms_file)
         norm.asymmetry_subject(feature, params_norm = param_norms_file )
+
+
+
+
+if __name__ == "__main__":
+    #parse commandline arguments 
+    parser = argparse.ArgumentParser(description='data-processing on new subject ')
+    parser.add_argument('-ids','--list_ids',
+                        help='Subject ID.',
+                        required=True,)
+    parser.add_argument('-site', '--site_code', 
+                        type=str, 
+                        help='site code', 
+                         required=True,)
+    parser.add_argument('-d', '--output_dir', 
+                        type=str, 
+                        help='path to store hdf5 files',
+                        default=BASE_PATH)   
+    parser.add_argument("--withoutflair",
+						action="store_true",
+						default=False,
+						help="do not use flair information") 
+    args = parser.parse_args()
+    subject_ids = np.array(np.loadtxt(args.list_ids, dtype='str',ndmin=1))
+    output_dir = args.output_dir  
+    site_code = args.site_code 
+    
+    process_new_subjects(subject_ids, site_code, output_dir, use_flair=True)
