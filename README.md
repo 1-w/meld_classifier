@@ -1,3 +1,12 @@
+# CAREFUL
+
+this is a development and testing branch
+
+you need to install fastsurfer and freesurfer 7 separately
+
+!!! *not guaranteed to work out of the box* !!!
+
+
 # MELD classifier
 Neural network lesion classifier for the MELD project.
 
