@@ -31,7 +31,8 @@ outliers_file='list_outliers_qc_6.csv'
 
 preprocessor=Preprocess(c_combat)
 #load in precombat data
-ref_subject_ids = c_combat.get_subject_ids(site_codes=site_codes, lesional_only=False)
+ref_subjects = c_combat.get_meld_subjects(site_codes=site_codes, lesional_only=False)
+ref_subject_ids = [s['id'] for s in ref_subjects]
 
 #get feature names
 features = {

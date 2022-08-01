@@ -41,7 +41,10 @@ class Preprocess:
         # filter subject ids based on site codes
         if self.site_codes is None:
             self.site_codes = self.cohort.get_sites()
-        self.subject_ids = self.cohort.get_subject_ids(site_codes=self.site_codes, lesional_only=False)
+        
+        self.subjects = self.cohort.get_meld_subjects(site_codes=self.site_codes, lesional_only=False)
+        self.subject_ids = [s.subject_id for s in self.subjects]
+        print('new Preprocess with following subjects:',self.subject_ids)
         self.feat = Feature()
         # calibration_smoothing : curve to calibrate smoothing on surface mesh
         self._calibration_smoothing = None
@@ -66,13 +69,15 @@ class Preprocess:
             )
 
     def transfer_lesion(self):
+        #what does this do ????
         new_cohort = MeldCohort(hdf5_file_root=self.write_hdf5_file_root)
-        new_listids = new_cohort.get_subject_ids(lesional_only=False)
-        for subject in self.subject_ids:
-            if subject in new_listids:
-                print("exist")
-                subj = MeldSubject(subject, self.cohort)
-                self.add_lesion(subj)
+        new_subjects = new_cohort.get_meld_subjects(lesional_only=False)
+        new_listids = [s.subject_id for s in new_subjects]
+        for new_subject in new_subjects:
+            if new_subject.subject_id in self.subject_ids:
+                new_subject.cohort = self.cohort
+                self.add_lesion(new_subject)
+
 
     def flatten(self, t):
         return [item for sublist in t for item in sublist]
@@ -81,8 +86,8 @@ class Preprocess:
         # preload geodesic distance solver
         solver = pp3d.MeshHeatMethodDistanceSolver(self.cohort.surf["coords"], self.cohort.surf["faces"])
 
-        for ids in self.subject_ids:
-            subj = MeldSubject(ids, cohort=self.cohort)
+        for subj in self.subjects:
+            # subj = MeldSubject(ids, cohort=self.cohort)
             hemi = subj.get_lesion_hemisphere()
             if hemi:
                 if subj.has_lesion:
@@ -105,9 +110,12 @@ class Preprocess:
                 else:
                     print("skipping ", ids)
 
-    def load_covars(self, subject_ids=None, demographic_file=None):
-        if subject_ids is None:
+    def load_covars(self, subjects=None, demographic_file=None):
+        if subjects is None:
+            subjects = self.subjects
             subject_ids = self.subject_ids
+        else:
+            subject_ids = [s.subject_id for s in subjects]
         if demographic_file is None:
             demographic_file = DEMOGRAPHIC_FEATURES_FILE
         covars = pd.DataFrame()
@@ -115,8 +123,7 @@ class Preprocess:
         sex = []
         group = []
         sites_scanners = []
-        for subject in subject_ids:
-            subj = MeldSubject(subject, cohort=self.cohort)
+        for subj in subjects:
             a, s = subj.get_demographic_features(["Age at preop", "Sex"], csv_file=demographic_file)
             ages.append(a)
             sex.append(s)
@@ -211,12 +218,12 @@ class Preprocess:
         else:
             outliers = []
         # load in features using cohort + subject class
-        combat_subject_include = np.zeros(len(self.subject_ids), dtype=bool)
+        combat_subject_include = np.zeros(len(self.subjects), dtype=bool)
         precombat_features = []
-        for k, subject in enumerate(self.subject_ids):
-            subj = MeldSubject(subject, cohort=self.cohort)
+        for k, subj in enumerate(self.subjects):
+            # subj = MeldSubject(subject, cohort=self.cohort)
             # exclude outliers and subject without feature
-            if (subj.has_features(feature_name)) & (subject not in outliers):
+            if (subj.has_features(feature_name)) & (subj.subject_id not in outliers):
                 lh = subj.load_feature_values(feature_name, hemi="lh")[self.cohort.cortex_mask]
                 rh = subj.load_feature_values(feature_name, hemi="rh")[self.cohort.cortex_mask]
                 combined_hemis = np.hstack([lh, rh])
@@ -279,15 +286,14 @@ class Preprocess:
         if not os.path.isdir(site_combat_path):
             os.makedirs(site_combat_path)
 
-        listids = self.subject_ids
-        site_codes = np.zeros(len(listids))
+        site_codes = np.zeros(len(self.subjects))
         precombat_features = []
-        combat_subject_include = np.zeros(len(listids), dtype=bool)
+        combat_subject_include = np.zeros(len(self.subjects), dtype=bool)
         demos = []
-        for k, subject in enumerate(listids):
+        for k, subj in enumerate(self.subjects):
             # get the reference index and cohort object for the site, 0 whole cohort, 1 new cohort
             site_code_index = site_codes[k]
-            subj = MeldSubject(subject, cohort=self.cohort)
+            # subj = MeldSubject(subject, cohort=self.cohort)
             # exclude outliers and subject without feature
             if subj.has_features(feature):
                 lh = subj.load_feature_values(feature, hemi="lh")[self.cohort.cortex_mask]
@@ -298,10 +304,11 @@ class Preprocess:
             else:
                 combat_subject_include[k] = False
 
-        print(listids)
+        # print(listids)
         # load in covariates - age, sex, group, site and scanner unless provided
+        print('Subject Ids for covars',[s.subject_id for s in np.array(self.subjects)[np.array(combat_subject_include)]])
         new_site_covars = self.load_covars(
-            subject_ids=np.array(listids)[np.array(combat_subject_include)], demographic_file=demographic_file
+            subjects=np.array(self.subjects)[np.array(combat_subject_include)], demographic_file=demographic_file
         ).copy()
         # check site_scanner codes are the same for all subjects
         if len(new_site_covars["site_scanner"].unique()) == 1:
@@ -401,15 +408,15 @@ class Preprocess:
         precombat_features = []
         site_scanner = []
         subjects_included = []
-        for subject in self.subject_ids:
-            subj = MeldSubject(subject, cohort=self.cohort)
+        for subj in self.subjects:
+            # subj = MeldSubject(subject, cohort=self.cohort)
             if subj.has_features(feature_name):
                 lh = subj.load_feature_values(feature_name, hemi="lh")[self.cohort.cortex_mask]
                 rh = subj.load_feature_values(feature_name, hemi="rh")[self.cohort.cortex_mask]
                 combined_hemis = np.hstack([lh, rh])
                 precombat_features.append(combined_hemis)
                 site_scanner.append(subj.site_code + "_" + subj.scanner)
-                subjects_included.append(subject)
+                subjects_included.append(subj)
         # if matrix empty, pass
         if precombat_features:
             precombat_features = np.array(precombat_features)
@@ -419,15 +426,15 @@ class Preprocess:
             )
             post_combat_feature_name = self.feat.combat_feat(feature_name)
             print("Combat finished \n Saving data")
-            self.save_cohort_features(post_combat_feature_name, dict_combat["data"].T, np.array(subjects_included))
+            self.save_cohort_features(post_combat_feature_name, dict_combat["data"].T, subjects_included)
         else:
             print("No data to combat harmonised")
             pass
 
-    def save_cohort_features(self, feature_name, features, subject_ids, hemis=["lh", "rh"]):
-        assert len(features) == len(subject_ids)
-        for s, subject in enumerate(subject_ids):
-            subj = MeldSubject(subject, cohort=self.cohort)
+    def save_cohort_features(self, feature_name, features, subjects, hemis=["lh", "rh"]):
+        assert len(features) == len(subjects)
+        for s, subj in enumerate(subjects):
+            # subj = MeldSubject(subject, cohort=self.cohort)
             subj.write_feature_values(feature_name, features[s], hemis=hemis, hdf5_file_root=self.write_hdf5_file_root)
 
     def remove_isolated_subs(self, covars, precombat_features):
@@ -551,9 +558,9 @@ class Preprocess:
         subject_include = []
         vals_matrix_lh = []
         vals_matrix_rh = []
-        for id_sub in self.subject_ids:
+        for subj in self.subjects:
             # create subject object
-            subj = MeldSubject(id_sub, cohort=self.cohort)
+            # subj = MeldSubject(id_sub, cohort=self.cohort)
             # smooth data only if the feature exist
             if subj.has_features(feature):
                 # load feature's value for this subject
@@ -572,9 +579,9 @@ class Preprocess:
                         vals_rh, num_rh = self.clip_data(vals_rh, params[feature])
                 vals_matrix_lh.append(vals_lh)
                 vals_matrix_rh.append(vals_rh)
-                subject_include.append(id_sub)
+                subject_include.append(subj)
             else:
-                print("feature {} does not exist for subject {}".format(feature, id_sub))
+                print("feature {} does not exist for subject {}".format(feature, subj.subject_id))
         # if matrix is empty, do nothing
         if not vals_matrix_lh:
             pass
@@ -604,7 +611,7 @@ class Preprocess:
             )
             # write features in hdf5
             print("Smoothing finished \n Saving data")
-            self.save_cohort_features(feature_smooth, smooth_vals_hemis, np.array(subject_include))
+            self.save_cohort_features(feature_smooth, smooth_vals_hemis, subject_include)
             return smooth_vals_hemis
 
     def define_atlas(self):
@@ -630,9 +637,9 @@ class Preprocess:
         """Compute matrix with average feature values per ROIS for each subject"""
         self.define_atlas()
         matrix = pd.DataFrame()
-        for id_sub in self.subject_ids:
+        for subj in self.subjects:
             # create subject object
-            subj = MeldSubject(id_sub, cohort=self.cohort)
+            # subj = MeldSubject(id_sub, cohort=self.cohort)
             # create a dictionnary to store values for each row of the matrix
             row = {}
             row["ID"] = subj.subject_id
@@ -736,15 +743,15 @@ class Preprocess:
 
     def compute_mean_std_controls(self, feature, cohort, asym=False, params_norm=None):
         """retrieve controls from given cohort, intra-normalise feature and return mean and std for inter-normalisation"""
-        controls_ids = cohort.get_subject_ids(group="control")
+        controls_subjects = cohort.get_meld_subjects(group="control")
         # Give warning if list of controls empty
-        if len(controls_ids) == 0:
+        if len(controls_subjects) == 0:
             print("WARNING: there is no controls in this cohort to do inter-normalisation")
         vals_array = []
         included_subj = []
-        for id_sub in controls_ids:
+        for subj in controls_subjects:
             # create subject object
-            subj = MeldSubject(id_sub, cohort=cohort)
+            # subj = MeldSubject(id_sub, cohort=cohort)
             # append data to compute mean and std if feature exist
             if subj.has_features(feature):
                 # load feature's value for this subject
@@ -760,7 +767,7 @@ class Preprocess:
                 else:
                     names_save = [f"mean", f"std"]
                 vals_array.append(intra_norm)
-                included_subj.append(id_sub)
+                included_subj.append(subj)
             else:
                 pass
         print("Compute mean and std from {} controls".format(len(included_subj)))
@@ -795,11 +802,11 @@ class Preprocess:
         feature_norm = self.feat.norm_feat(feature)
         # loop over subjects
         vals_array = []
-        included_subjects = np.zeros(len(self.subject_ids), dtype=bool)
-        controls_subjects = np.zeros(len(self.subject_ids), dtype=bool)
-        for k, id_sub in enumerate(self.subject_ids):
+        included_subjects = np.zeros(len(self.subjects), dtype=bool)
+        controls_subjects = np.zeros(len(self.subjects), dtype=bool)
+        for k, subj in enumerate(self.subjects):
             # create subject object
-            subj = MeldSubject(id_sub, cohort=self.cohort)
+            # subj = MeldSubject(id_sub, cohort=self.cohort)
             if subj.has_features(feature):
                 included_subjects[k] = True
                 if subj.group == "control":
@@ -814,14 +821,14 @@ class Preprocess:
                 intra_norm = np.array(self.normalise(vals))
                 vals_array.append(intra_norm)
             else:
-                print("exlude subject {}".format(id_sub))
+                print("exlude subject {}".format(subj.subject_id))
                 included_subjects[k] = False
                 controls_subjects[k] = False
         if vals_array:
             vals_array = np.array(vals_array)
             # remove exclude subjects
             controls_subjects = np.array(controls_subjects)[included_subjects]
-            included_subjects = np.array(self.subject_ids)[included_subjects]
+            included_subjects = np.array(self.subjects)[included_subjects]
             # normalise by controls
             if cohort_for_norm is not None:
                 print("Use other cohort for normalisation")
@@ -855,11 +862,11 @@ class Preprocess:
         feature_asym = self.feat.asym_feat(feature)
         # loop over subjects
         vals_asym_array = []
-        included_subjects = np.zeros(len(self.subject_ids), dtype=bool)
-        controls_subjects = np.zeros(len(self.subject_ids), dtype=bool)
-        for k, id_sub in enumerate(self.subject_ids):
+        included_subjects = np.zeros(len(self.subjects), dtype=bool)
+        controls_subjects = np.zeros(len(self.subjects), dtype=bool)
+        for k, subj in enumerate(self.subjects):
             # create subject object
-            subj = MeldSubject(id_sub, cohort=self.cohort)
+            # subj = MeldSubject(id_sub, cohort=self.cohort)
             if subj.has_features(feature):
                 included_subjects[k] = True
                 if subj.group == "control":
@@ -877,14 +884,14 @@ class Preprocess:
                 vals_asym = self.compute_asym(intra_norm)
                 vals_asym_array.append(vals_asym)
             else:
-                print("exlude subject {}".format(id_sub))
+                print("exlude subject {}".format(subj.subject_id))
                 included_subjects[k] = False
                 controls_subjects[k] = False
         if vals_asym_array:
             vals_asym_array = np.array(vals_asym_array)
             # remove exclude subjects
             controls_subjects = np.array(controls_subjects)[included_subjects]
-            included_subjects = np.array(self.subject_ids)[included_subjects]
+            included_subjects = np.array(self.subjects)[included_subjects]
             # normalise by controls
             if cohort_for_norm is not None:
                 print("Use other cohort for normalisation")
@@ -946,17 +953,17 @@ class Preprocess:
             # loop over subjects
             vals_array = []
             included_subjects = []
-            for k, id_sub in enumerate(self.subject_ids):
+            for k, subj in enumerate(self.subjects):
                 # create subject object
-                subj = MeldSubject(id_sub, cohort=self.cohort)
+                # subj = MeldSubject(id_sub, cohort=self.cohort)
                 if subj.has_features(feature):
                     # load feature's value for this subject
                     vals_lh = subj.load_feature_values(feature, hemi="lh")
                     vals_rh = subj.load_feature_values(feature, hemi="rh")
                     vals = np.array(np.hstack([vals_lh[self.cohort.cortex_mask], vals_rh[self.cohort.cortex_mask]]))
-                    included_subjects.append(id_sub)
+                    included_subjects.append(subj.subject_id)
                     # load in covariates - age, sex
-                    age, sex = covars[covars.ID == id_sub][["ages", "sex"]].values[0]
+                    age, sex = covars[covars.ID == subj.subject_id][["ages", "sex"]].values[0]
                     if age >= 80:
                         age = 79
                     # normalise features with GP
@@ -980,27 +987,27 @@ class Preprocess:
 
     def compute_mean_std(self, feature, cohort):
         """get mean and std of all brain for the given cohort and save parameters"""
-        cohort_ids = cohort.get_subject_ids(group="both")
+        cohort_subjects = cohort.get_meld_subjects(group="both")
         # Give warning if list of controls empty
-        if len(cohort_ids) == 0:
+        if len(cohort_subjects) == 0:
             print("WARNING: there is no subject in this cohort")
         vals_array = []
         included_subj = []
-        for id_sub in cohort_ids:
+        for subj in cohort_subjects:
             # create subject object
-            subj = MeldSubject(id_sub, cohort=cohort)
+            # subj = MeldSubject(id_sub, cohort=cohort)
             # append data to compute mean and std if feature exist and for FLAIR=0
             if (not subj.has_features(feature)) & (not "FLAIR" in feature):
                 pass
-                print("feature {} does not exist for subject {}".format(feature, id_sub))
+                print("feature {} does not exist for subject {}".format(feature, subj.subject_id))
             else:
                 # load feature's value for this subject
                 vals_lh = subj.load_feature_values(feature, hemi="lh")
                 vals_rh = subj.load_feature_values(feature, hemi="rh")
                 vals = np.array(np.hstack([vals_lh[cohort.cortex_mask], vals_rh[cohort.cortex_mask]]))
                 vals_array.append(vals)
-                included_subj.append(id_sub)
-        print("Compute mean and std from {} subject".format(len(included_subj)))
+                # included_subj.append(id_sub) #not needed
+        print("Compute mean and std from {} subject".format(len(vals_array)))
         # get mean and std
         vals_array = np.matrix(vals_array)
         mean = (vals_array.flatten()).mean()

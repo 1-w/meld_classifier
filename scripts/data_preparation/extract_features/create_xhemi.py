@@ -41,27 +41,24 @@ import subprocess
 from subprocess import Popen, DEVNULL, check_output
 from argparse import ArgumentParser
 import multiprocessing
-def create_xhemi(subject_ids, subjects_dir,template = 'fsaverage_sym'):
+def create_xhemi(subject_id, subjects_dir,template = 'fsaverage_sym'):
     #copy template
-    if type(subject_ids) == str:
-        subject_ids = [subject_ids]
     if not os.path.isdir(opj(subjects_dir,template)):
         shutil.copy(opj(os.environ['FREESURFER_HOME'],'subjects',template), opj(subjects_dir, os.path.basename(template)))
     
-    for subject in subject_ids:
         # if not os.path.isfile(opj(subjects_dir,subject,'xhemi','surf','lh.fsaverage_sym.sphere.reg')):
 
-        if not os.path.isfile(opj(subjects_dir,subject,'surf','lh.fsaverage_sym.sphere.reg')):
-            command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject} --t {template} --lh'
-            print(command)     
-            proc = Popen(command, shell=True, stderr=subprocess.STDOUT, stdout = DEVNULL)
-            proc.wait()
+    if not os.path.isfile(opj(subjects_dir,subject_id,'surf','lh.fsaverage_sym.sphere.reg')):
+        command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh'
+        print(command)     
+        proc = Popen(command, shell=True, stderr=subprocess.STDOUT, stdout = DEVNULL)
+        proc.wait()
 
-        if not os.path.isfile(opj(subjects_dir,subject,'xhemi','surf','lh.fsaverage_sym.sphere.reg')):
-            command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject} --t {template} --lh --xhemi'
-            print(command)
-            proc = Popen(command, shell=True, stderr=subprocess.STDOUT, stdout = DEVNULL)
-            proc.wait()
+    if not os.path.isfile(opj(subjects_dir,subject_id,'xhemi','surf','lh.fsaverage_sym.sphere.reg')):
+        command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh --xhemi'
+        print(command)
+        proc = Popen(command, shell=True, stderr=subprocess.STDOUT, stdout = DEVNULL)
+        proc.wait()
 
             
 

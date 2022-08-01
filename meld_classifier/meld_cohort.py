@@ -22,9 +22,11 @@ import scipy
 
 
 class MeldCohort:
+
     """Class to define cohort-level parameters such as subject ids, mesh"""
 
     def __init__(self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH):
+        # print('meld cohort with datadir', data_dir)
         self.data_dir = data_dir
         self.hdf5_file_root = hdf5_file_root
         self.dataset = dataset
@@ -53,16 +55,18 @@ class MeldCohort:
         # neighbours: list of neighbours for each vertex
         self._neighbours = None
 
+        self.subjects = self.get_meld_subjects()
+
     @property
     def full_feature_list(self):
         """list of features available in this cohort"""
         if self._full_feature_list is None:
             self._full_feature_list = []
-            subject_ids = self.get_subject_ids()
+            subjects = self.get_meld_subjects()
             # get union of all features from subjects in this cohort
             features = set()
-            for subj in subject_ids:
-                features = features.union(MeldSubject(subj, self).get_feature_list().copy())
+            for subj in subjects:
+                features = features.union(subj.get_feature_list().copy())
             self._full_feature_list = sorted(list(features))
             self.log.info(f"full_feature_list: {self._full_feature_list}")
         return self._full_feature_list
@@ -162,6 +166,7 @@ class MeldCohort:
         for f in glob.glob(os.path.join(self.data_dir, "MELD_*")):
             if os.path.isdir(f):
                 sites.append(f.split("_")[-1])
+        print('found',sites,'sites')
         return sites
 
     @contextmanager
@@ -188,6 +193,8 @@ class MeldCohort:
         if hdf5_file_root is None:
             hdf5_file_root = self.hdf5_file_root
 
+        print(self.data_dir)
+
         p = os.path.join(self.data_dir, f"MELD_{site_code}", hdf5_file_root.format(site_code=site_code, group=group))
         # open existing file or create new one
         if os.path.isfile(p) and not write:
@@ -204,7 +211,111 @@ class MeldCohort:
             if f is not None:
                 f.close()
 
-    def get_subject_ids(self, **kwargs):
+    def get_meld_subjects(self, groups=None,site_codes=None,scanners=None,lesional_only=True,subject_features_to_include='', subject_features_to_exclude=''):
+        # get groups
+        if isinstance(groups, str):
+            groups = [group] 
+        else:
+            groups = ["patient", "control"]
+
+        # get sites
+        if isinstance(site_codes, str):
+            site_codes = [site_codes]
+        else:
+            print('getting sites')
+            site_codes = self.get_sites()
+
+        # get scanners
+        if isinstance(scanners, str):
+            scanners = [scanners]
+        else:
+            scanners = ["3T", "15T"]
+
+        if type(subject_features_to_exclude) == str:
+            subject_features_to_exclude = [subject_features_to_exclude]
+
+        if type(subject_features_to_include) == str:
+            subject_features_to_include = [subject_features_to_include]
+
+        print('New meld cohort with',site_codes,groups,scanners)
+        # get subjects for specified groups and sites
+        subject_dicts = []
+        for site_code in site_codes:
+            for group in groups:
+                with self._site_hdf5(site_code, group) as f:
+                    if f is None:
+                        # print('continue',site_code,group)
+                        continue
+                    # print("HERE")
+                    cur_scanners = f[site_code].keys()
+                    # print(cur_scanners)
+                    for scanner in cur_scanners:
+                        for subject_id in list(f[os.path.join(site_code, scanner, group)].keys()):
+                            subject_dicts.append({
+                                'id':subject_id,
+                                'group':group,
+                                'scanner':scanner,
+                                'site_code': site_code
+                            })
+
+        # print(f"total number of subjects: {len(subject_dicts)}")
+        
+        self.log.info(f"total number of subjects: {len(subject_dicts)}")
+
+        # restrict to ids in dataset (if specified)
+        if self.dataset is not None:
+            subjects_in_dataset, _, _ = self.read_subject_ids_from_dataset()
+            subject_dicts = [s for s in subject_dicts if s['id'] in subjects_in_dataset]
+            self.log.info(
+                f"total number of subjects after restricting to subjects from {self.dataset}: {len(subject_dicts)}"
+            )
+
+        # get list of features that is used to filter subjects
+        # e.g. use this to filter subjects without FLAIR features
+        _, required_subject_features = self._filter_features(
+            subject_features_to_exclude,
+            return_excluded=True,
+        )
+        self.log.debug("selecting subjects that have features: {}".format(required_subject_features))
+
+        # get list of features that determine whether to exclude subjects
+        # e.g. use this to filter subjects with FLAIR features
+        _, undesired_subject_features = self._filter_features(
+            subject_features_to_include,
+            return_excluded=True,
+        )
+        self.log.debug("selecting subjects that don't have features: {}".format(undesired_subject_features))
+
+        # filter ids by scanner, features and whether they have lesions.
+        filtered_subject_ids = []
+        subjects = []
+        print(subject_dicts)
+        for subject_dict in subject_dicts:
+            subj = MeldSubject(subject_dict['id'], self,site_code=subject_dict['site_code'], scanner=subject_dict['scanner'],group=subject_dict['group'])
+            # check scanner
+            if subj.scanner not in scanners:
+                continue
+            # check required features
+            if not subj.has_features(required_subject_features):
+                continue
+            # check undesired features
+            if subj.has_features(undesired_subject_features) and len(undesired_subject_features) > 0:
+                continue
+            # check lesion mask presence
+            if lesional_only and subj.is_patient and not subj.has_lesion():
+                continue
+            # subject has passed all filters, add to list
+            subjects.append(MeldSubject(subject_dict['id'], self,site_code=subject_dict['site_code'], scanner=subject_dict['scanner'],group=subject_dict['group']))
+
+        self.log.info(
+            f"total number after filtering by scanner {scanners}, features, lesional_only {lesional_only}: {len(subjects)}"
+        )
+        print(
+            f"total number after filtering by scanner {scanners}, features, lesional_only {lesional_only}: {len(subjects)}"
+        )
+        return subjects
+
+    def get_subject_ids(self, groups='',site_codes='',scanners='',lesional_only=True,subject_features_to_include='', subject_features_to_exclude=''):
         """Output list of subject_ids.
 
         List can be filtered by sites (given as list of site_codes, e.g. 'H2'),
@@ -229,22 +340,27 @@ class MeldCohort:
         """
         # parse kwargs:
         # get groups
-        if kwargs.get("group", "both") == "both":
+        if groups == '':
             groups = ["patient", "control"]
         else:
-            groups = [kwargs.get("group", "both")]
+            groups = [group]
         # get sites
-        site_codes = kwargs.get("site_codes", self.get_sites())
+        if site_codes == '':
+            site_codes = self.get_sites()
+
         if isinstance(site_codes, str):
-            site_codes = [site_codes]
+            site_codes = [site_code]
+
         # get scanners
-        scanners = kwargs.get("scanners", ["3T", "15T"])
+        if scanners == '':
+            scanners = ["3T", "15T"]
         if not isinstance(scanners, list):
             scanners = [scanners]
+        if type(subject_features_to_exclude) == str:
+            subject_features_to_exclude = [subject_features_to_exclude]
 
-        lesional_only = kwargs.get("lesional_only", True)
-        subject_features_to_exclude = kwargs.get("subject_features_to_exclude", [""])
-        subject_features_to_include = kwargs.get("subject_features_to_include", [""])
+        if type(subject_features_to_include) == str:
+            subject_features_to_include = [subject_features_to_include]
 
         # get subjects for specified groups and sites
         subject_ids = []
@@ -306,6 +422,8 @@ class MeldCohort:
             f"total number after filtering by scanner {scanners}, features, lesional_only {lesional_only}: {len(filtered_subject_ids)}"
         )
         return filtered_subject_ids
+
+    
 
     def get_features(self, features_to_exclude=[""]):
         """
@@ -376,35 +494,55 @@ class MeldSubject:
     individual patient from meld cohort, can read subject data and other info
     """
 
-    def __init__(self, subject_id, cohort):
+    def __init__(self, subject_id, cohort, site_code = '', scanner ='',group=''):
         self.subject_id = subject_id
+
+        if site_code == '':
+            self.group = self.subject_id.split("_")[1]
+        else:
+            self.site_code = site_code
+        
+        if scanner == '':
+            self.scanner = self.subject_id.split("_")[2]
+        else:
+            self.scanner =scanner
+        
+        if group == '':
+            group = self.subject_id.split("_")[3]
+            if group == "FCD":
+                self.group = "patient"
+            elif group == "C":
+                self.group = "control"
+        else:
+            self.group = group
+
         self.cohort = cohort
         self.log = logging.getLogger(__name__)
         # unseeded rng for generating random numbers
         self.rng = np.random.default_rng()
 
-    @property
-    def scanner(self):
-        _, site_code, scanner, group, ID = self.subject_id.split("_")
-        return scanner
+    # @property
+    # def scanner(self):
+    #     _, site_code, scanner, group, ID = self.subject_id.split("_")
+    #     return scanner
 
-    @property
-    def group(self):
-        _, site_code, scanner, group, ID = self.subject_id.split("_")
-        if group == "FCD":
-            group = "patient"
-        elif group == "C":
-            group = "control"
-        else:
-            print(
-                f"Error: incorrect naming scheme used for {self.subject_id}. Unable to determine if patient or control."
-            )
-        return group
+    # @property
+    # def group(self):
+    #     _, site_code, scanner, group, ID = self.subject_id.split("_")
+    #     if group == "FCD":
+    #         group = "patient"
+    #     elif group == "C":
+    #         group = "control"
+    #     else:
+    #         print(
+    #             f"Error: incorrect naming scheme used for {self.subject_id}. Unable to determine if patient or control."
+    #         )
+    #     return group
 
-    @property
-    def site_code(self):
-        _, site_code, scanner, group, ID = self.subject_id.split("_")
-        return site_code
+    # @property
+    # def site_code(self):
+    #     _, site_code, scanner, group, ID = self.subject_id.split("_")
+    #     return site_code
 
     def surf_dir_path(self, hemi):
         """return path to features dir (surf_dir)"""
@@ -471,7 +609,11 @@ class MeldSubject:
         Returns:
             list of features, matching structure of feature_names
         """
-        csv_path = os.path.join(self.cohort.data_dir, csv_file)
+        if not os.path.isfile(csv_file):
+            csv_path = os.path.join(self.cohort.data_dir, csv_file)
+        else:
+            csv_path = csv_file
+
         return_single = False
         if isinstance(feature_names, str):
             return_single = True

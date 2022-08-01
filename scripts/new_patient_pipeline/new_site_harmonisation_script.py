@@ -18,29 +18,14 @@ from meld_classifier.paths import BASE_PATH, NEWSUBJECTS_DATASET
 def create_dataset_file(subjects, output_path):
     df=pd.DataFrame()
     subjects_id = [subject for subject in subjects]
-    df['subject_id']=subjects_id
-    df['split']=['test' for subject in subjects]
+    df['subject_id']= subjects_id
+    df['split']=['test' for _ in subjects]
     df.to_csv(output_path)
-    
-if __name__ == '__main__':
 
-    #parse commandline arguments 
-    parser = argparse.ArgumentParser(description='perform cortical parcellation using recon-all from freesurfer')
-    parser.add_argument('-ids','--list_ids',
-                        help='Subjects IDs in a text file',
-                        required=True,)
-    parser.add_argument('-site','--site_code',
-                        help='Site code',
-                        required=True,)
-    parser.add_argument('-demos','--demographic_file',
-                        help='path to the new site demographic file',
-                        required=True,)
-    args = parser.parse_args()
-    subject_ids = np.array(np.loadtxt(args.list_ids, dtype='str',ndmin=1))
-    site_code=str(args.site_code)
-    demographic_file = args.demographic_file
-    output_dir = BASE_PATH
-    dataset_newSubject = os.path.join(BASE_PATH, NEWSUBJECTS_DATASET)
+
+def run_site_harmonization(subject_ids, site_code, demographic_file_path, output_dir=BASE_PATH, dataset_newSubject=''):
+    if dataset_newSubject == '':
+        dataset_newSubject = os.path.join(BASE_PATH, NEWSUBJECTS_DATASET)
 
     # Set features and smoothed values
     features = {
@@ -69,7 +54,7 @@ if __name__ == '__main__':
         
     #create cohort for the new subject
     c_smooth= MeldCohort(hdf5_file_root='{site_code}_{group}_featurematrix_smoothed.hdf5', 
-                       dataset=dataset_newSubject)
+                       dataset=dataset_newSubject, data_dir=output_dir)
     #create object combat
     combat =Preprocess(c_smooth,
                            site_codes=[site_code],
@@ -78,10 +63,37 @@ if __name__ == '__main__':
     #features names
     for feature in features_smooth:
         print(feature)
-        combat.get_combat_new_site_parameters(feature, demographic_file)
+        combat.get_combat_new_site_parameters(feature, demographic_file_path)
     
 
        
+
+    
+    
+if __name__ == '__main__':
+
+    #parse commandline arguments 
+    parser = argparse.ArgumentParser(description='perform cortical parcellation using recon-all from freesurfer')
+    parser.add_argument('-ids','--list_ids',
+                        help='Subjects IDs in a text file',
+                        default='',
+                        required=False)
+    parser.add_argument('-site','--site_code',
+                        help='Site code',
+                        required=True,)
+    parser.add_argument('-demos','--demographic_file',
+                        help='path to the new site demographic file',
+                        required=True,)
+    args = parser.parse_args()
+    demographic_file_path = args.demographic_file
+
+    if args.list_ids != '':
+        subject_ids = np.array(np.loadtxt(args.list_ids, dtype='str',ndmin=1))
+    else:
+        subject_ids = pd.read_csv(demographic_file_path)['ID'].values
+    site_code=str(args.site_code)
+
+    run_site_harmonization(subject_ids, site_code, demographic_file_path)
 
     
 

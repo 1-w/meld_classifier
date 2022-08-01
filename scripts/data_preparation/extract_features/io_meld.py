@@ -114,33 +114,37 @@ def get_scanner(fs_id):
     return scanner
 
 
-def save_subject(fs_id, features, medial_wall, subject_dir, output_dir=None):
+def save_subject(fs_id, features, medial_wall, subject_dir, output_dir=None, site_code ='', group='', scanner=''):
     n_vert = 163842
     # get subject info from id
-    c_p = get_cp(fs_id)
-    scanner = get_scanner(fs_id)
-    site_code = get_sitecode(fs_id)
+    if group == '':
+        group = get_cp(fs_id)
+    if scanner == '':
+        scanner = get_scanner(fs_id)
+    if site_code =='':
+        site_code = get_sitecode(fs_id)
+
     # skip subject if info not available
-    if "false" in (c_p, scanner, site_code):
+    if "false" in (group, scanner, site_code):
         print("Skipping subject " + fs_id)
     hemis = ["lh", "rh"]
     # save feature in hdf5 file
     if output_dir is None:
         output_dir = subject_dir
-    hdf5_file = os.path.join(output_dir, site_code + "_" + c_p + "_featurematrix.hdf5")
-    print(hdf5_file)
+    hdf5_file = os.path.join(output_dir, site_code + "_" + group + "_featurematrix.hdf5")
+    # print('hdf5file',hdf5_file)
     if hdf5_file is not None:
         if not os.path.isfile(hdf5_file):
             f = h5py.File(hdf5_file, "a")
         else:
             f = h5py.File(hdf5_file, "r+")
     for h in hemis:
-        group = f.require_group(os.path.join(site_code, scanner, c_p, fs_id, h))
+        hdf5group = f.require_group(os.path.join(site_code, scanner, group, fs_id, h))
         for f_name in features:
             try:
                 feature = import_mgh(os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + f_name))
                 feature[medial_wall] = 0
-                dset = group.require_dataset(
+                dset = hdf5group.require_dataset(
                     f_name, shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
                 )
                 dset[:] = feature
@@ -154,7 +158,7 @@ def save_subject(fs_id, features, medial_wall, subject_dir, output_dir=None):
         lesion_name = os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + ".on_lh.lesion.mgh")
         if os.path.isfile(lesion_name):
             lesion = import_mgh(lesion_name)
-            dset = group.require_dataset(
+            dset = hdf5group.require_dataset(
                 ".on_lh.lesion.mgh", shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
             )
             dset[:] = lesion

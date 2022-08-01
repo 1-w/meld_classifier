@@ -35,8 +35,9 @@ def predict_subjects(subject_ids, new_data_parameters, plot_images=False, salien
     exp.cohort = MeldCohort(
         hdf5_file_root=new_data_parameters["hdf5_file_root"], dataset=new_data_parameters["dataset"]
     )
-    subject_ids = exp.cohort.get_subject_ids(**new_data_parameters, lesional_only=False)
-    print(subject_ids)
+    subjects = exp.cohort.get_meld_subjects(**new_data_parameters, lesional_only=False)
+    subject_ids = [s['id'] for s in subjects]
+    # print(subject_ids)
     save_dir = new_data_parameters["saved_hdf5_dir"]
     # create sub-folders if do not exist
     os.makedirs(save_dir, exist_ok=True)

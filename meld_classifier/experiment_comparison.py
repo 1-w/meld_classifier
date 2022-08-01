@@ -132,7 +132,7 @@ class ExperimentComparison:
         if self.restrict_subjects is None:
             return subject_ids
         else:
-            c = MeldCohort(hdf5_file_root=hdf5_file_root)
+            cohort = MeldCohort(hdf5_file_root=hdf5_file_root)
             # get all FLAIR subjects
             all_flair_subject_ids = cohort.get_subject_ids(subject_features_to_exclude=["FLAIR"])
             # restrict subjects to those that have flair features

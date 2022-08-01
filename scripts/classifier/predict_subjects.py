@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import meld_classifier.paths as paths
 import json
-from meld_classifier.experiment import get_subject_ids
+from meld_classifier.experiment import get_subject_ids, get_meld_subjects
 import os
 
 if __name__ == "__main__":

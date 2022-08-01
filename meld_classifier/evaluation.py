@@ -765,7 +765,8 @@ class Evaluator:
             # get all valid control ids (with correct features etc)
             data_parameters_copy = self.experiment.data_parameters.copy()
             data_parameters_copy["group"] = "control"
-            control_ids = self.experiment.cohort.get_subject_ids(**data_parameters_copy, verbose=False)
+            control_subs = self.experiment.cohort.get_meld_subjects(**data_parameters_copy, verbose=False)
+            control_ids = [s.subject_id for s in control_subs]
             # shuffle control ids
             np.random.seed(5)
             np.random.shuffle(control_ids)

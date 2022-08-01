@@ -70,7 +70,8 @@ if __name__ == "__main__":
 
     c = MeldCohort(hdf5_file_root=data_parameters["hdf5_file_root"])
     # load subject ids
-    listids = c.get_subject_ids(site_codes=data_parameters["site_codes"], group=data_parameters["group"])
+    subs = c.get_meld_subjects(site_codes=data_parameters["site_codes"], group=data_parameters["group"])
+    listids = [s['id'] for s in subs]
     np.random.seed(42)  # seed the dataset split generation
     np.random.shuffle(listids)
 
