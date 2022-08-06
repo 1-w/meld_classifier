@@ -138,29 +138,29 @@ def save_subject(fs_id, features, medial_wall, subject_dir, output_dir=None, sit
             f = h5py.File(hdf5_file, "a")
         else:
             f = h5py.File(hdf5_file, "r+")
-    for h in hemis:
-        hdf5group = f.require_group(os.path.join(site_code, scanner, group, fs_id, h))
-        for f_name in features:
-            try:
-                feature = import_mgh(os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + f_name))
-                feature[medial_wall] = 0
-                dset = hdf5group.require_dataset(
-                    f_name, shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
-                )
-                dset[:] = feature
-            except:
-                if "FLAIR" not in f_name:
-                    print(
-                        "Expected feature "
-                        + os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + f_name)
-                        + " was not found. One step in the pipeline has failed"
+        for h in hemis:
+            hdf5group = f.require_group(os.path.join(site_code, scanner, group, fs_id, h))
+            for f_name in features:
+                try:
+                    feature = import_mgh(os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + f_name))
+                    feature[medial_wall] = 0
+                    dset = hdf5group.require_dataset(
+                        f_name, shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
                     )
-        lesion_name = os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + ".on_lh.lesion.mgh")
-        if os.path.isfile(lesion_name):
-            lesion = import_mgh(lesion_name)
-            dset = hdf5group.require_dataset(
-                ".on_lh.lesion.mgh", shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
-            )
-            dset[:] = lesion
-    f.close()
+                    dset[:] = feature
+                except:
+                    if "FLAIR" not in f_name:
+                        print(
+                            "Expected feature "
+                            + os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + f_name)
+                            + " was not found. One step in the pipeline has failed"
+                        )
+            lesion_name = os.path.join(subject_dir, fs_id, "xhemi/surf_meld", h + ".on_lh.lesion.mgh")
+            if os.path.isfile(lesion_name):
+                lesion = import_mgh(lesion_name)
+                dset = hdf5group.require_dataset(
+                    ".on_lh.lesion.mgh", shape=(n_vert,), dtype="float32", compression="gzip", compression_opts=9
+                )
+                dset[:] = lesion
+        f.close()
     return

@@ -48,7 +48,7 @@ class Evaluator:
         checkpoint_path=None,
         make_images=False,
         make_prediction_space=False,
-        subject_ids=None,
+        subjects=None,
         save_dir=None,
     ):
         # set class params
@@ -75,10 +75,10 @@ class Evaluator:
 
         # set subject_ids
         if mode == "inference":
-            assert subject_ids is not None, "for mode inference need to define subject ids"
-            self.combined_ids = subject_ids
+            assert subjects is not None, "for mode inference need to define subject ids"
+            self.combined_subjects = subjects
             self.log.info(
-                f"Initialized Evaluation with mode {self.mode}, thresh {self.threshold} on {len(self.combined_ids)} subjects"
+                f"Initialized Evaluation with mode {self.mode}, thresh {self.threshold} on {len(self.combined_subjects)} subjects"
             )
         else:
             train_ids, val_ids, test_ids = experiment.get_train_val_test_ids()
@@ -88,8 +88,14 @@ class Evaluator:
                 subject_ids = val_ids
             elif mode == "test":
                 subject_ids = test_ids
-            self.patient_ids, self.control_ids = self.divide_subjects(subject_ids, n_controls=5)
+            self.patient_ids, self.control_ids = self.divide_subjects(subjects, n_controls=5)
+
+            self.patient_subjects = [s for s in subjects if s in self.patient_ids]
+            self.control_subjects = [s for s in subjects if s in self.control_ids]
+
+            self.combined_subjects = list(self.patient_subjects) + list(self.control_subjects)
             self.combined_ids = list(self.patient_ids) + list(self.control_ids)
+
             if mode == "train":
                 # if we're training, i.e. optimising threshold, this is only done using patients
                 self.combined_ids = self.patient_ids
@@ -468,7 +474,7 @@ class Evaluator:
             plt.close("all")
         return
 
-    def load_predict_data(self, subject_ids=None):
+    def load_predict_data(self, subjects=None):
         """
         load subject data in self.data_dictionary and predict subjects.
 
@@ -480,12 +486,12 @@ class Evaluator:
                 Otherwise predict self.combined_ids and save in self.data_dictionary
         """
         self.log.info("loading data and predicting model")
-        return_dict = subject_ids is not None
+        return_dict = subjects is not None
         data_dictionary = {}
-        if subject_ids is None:
-            subject_ids = self.combined_ids
-        for subj_id in subject_ids:
-            subj = MeldSubject(subj_id, self.experiment.cohort)
+        if subjects is None:
+            subjects = self.combined_subjects
+        for subj in subjects:
+            # subj = MeldSubject(subj_id, self.experiment.cohort)
             features, features_to_ignore = self.experiment.get_features()
             features, labels = load_combined_hemisphere_data(
                 subj,
@@ -498,9 +504,12 @@ class Evaluator:
             )
 
             prediction = self.predict(features)
-            data_dictionary[subj_id] = {"input_labels": labels, "result": np.reshape(prediction, len(prediction))}
+            data_dictionary[subj.subject_id] = {
+                "input_labels": labels,
+                "result": np.reshape(prediction, len(prediction)),
+            }
             if self.mode != "train":
-                data_dictionary[subj_id]["input_features"] = features
+                data_dictionary[subj.subject_id]["input_features"] = features
         if return_dict:
             return data_dictionary
         else:
@@ -555,15 +564,17 @@ class Evaluator:
         else:
             self.data_dictionary = data_dictionary
 
-    def load_predict_single_subject(self, subj_id, fold=None, plot=False, saliency=False, suffix=""):
+    def load_predict_single_subject(self, subj, fold=None, plot=False, saliency=False, suffix=""):
         """"""
         # load and predict data
-        data_dictionary = self.load_predict_data(subject_ids=[subj_id])
-        subject_features = data_dictionary[subj_id]["input_features"]
-        labels = data_dictionary[subj_id]["input_labels"]
-        prediction = data_dictionary[subj_id]["result"]
+        data_dictionary = self.load_predict_data(subjects=[subj])
+        subject_features = data_dictionary[subj.subject_id]["input_features"]
+        labels = data_dictionary[subj.subject_id]["input_labels"]
+        prediction = data_dictionary[subj.subject_id]["result"]
         # threshold prediction
-        thresholded = self.threshold_and_cluster(data_dictionary=data_dictionary)[subj_id]["cluster_thresholded"]
+        thresholded = self.threshold_and_cluster(data_dictionary=data_dictionary)[subj.subject_id][
+            "cluster_thresholded"
+        ]
         prediction = np.concatenate(
             [thresholded[hemi][self.experiment.cohort.cortex_mask] for hemi in ["left", "right"]]
         )
@@ -575,20 +586,20 @@ class Evaluator:
             )
 
         # get stats
-        self.per_subject_stats(subj_id, prediction, labels, fold=fold, suffix=suffix)
+        self.per_subject_stats(subj, prediction, labels, fold=fold, suffix=suffix)
 
         # plot prediction
         if plot:
-            self.plot_report_prediction(subj_id, subject_features, prediction, labels)
+            self.plot_report_prediction(subj, subject_features, prediction, labels)
 
         # save data
-        self.save_prediction(subj_id, prediction, suffix=suffix)
+        self.save_prediction(subj, prediction, suffix=suffix)
         if saliency:
             # save saliency
             dataset_str = "integrated_gradients_pred"
             self.save_prediction(
-                subj_id,
-                data_dictionary[subj_id][dataset_str],
+                subj,
+                data_dictionary[subj.subject_id][dataset_str],
                 dataset_str=dataset_str,
                 suffix=suffix,
                 dtype=np.float32,
@@ -596,7 +607,7 @@ class Evaluator:
 
         return
 
-    def save_prediction(self, subject, prediction, dataset_str="prediction", suffix="", dtype=np.uint8):
+    def save_prediction(self, subj, prediction, dataset_str="prediction", suffix="", dtype=np.uint8):
         """
         saves prediction to {experiment_path}/results/predictions_{experiment_name}.hdf5.
         the hdf5 has the structure (subject_id/hemisphere/prediction).
@@ -622,11 +633,11 @@ class Evaluator:
         # while not done:
         try:
             with h5py.File(filename, mode=mode) as f:
-                self.log.info(f"saving {dataset_str} for {subject}")
+                self.log.info(f"saving {dataset_str} for {subj.subject_id}")
                 for i, hemi in enumerate(["lh", "rh"]):
                     shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
                     # create dataset
-                    dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
+                    dset = f.require_dataset(f"{subj.subject_id}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
                     # save prediction in dataset
                     dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
                     if dataset_str == "prediction":
@@ -635,21 +646,20 @@ class Evaluator:
                 done = True
                 f.close()
         except OSError:
-            print(f'ERROR encountered during saving {dataset_str} for {subject} ')
+            print(f"ERROR encountered during saving {dataset_str} for {subj.subject_id} ")
             # done = False
 
-
-    def per_subject_stats(self, subject, prediction, labels, fold=None, suffix=""):
+    def per_subject_stats(self, subj, prediction, labels, fold=None, suffix=""):
         """calculate stats per subject.
 
         TODO: could improve code
         """
-        boundary_label = MeldSubject(subject, self.experiment.cohort).load_boundary_zone(max_distance=20)
+        boundary_label = subj.load_boundary_zone(max_distance=20)
 
         # columns: ID, group, detected,  number extra-lesional clusters,border detected
         # calculate stats first
-        id_ = subject
-        group = "FCD" in subject
+        id_ = subj.subject_id
+        group = "FCD" in subj.group
         detected = np.logical_and(prediction, labels).any()
         difference = np.setdiff1d(np.unique(prediction), np.unique(prediction[labels]))
         difference = difference[difference > 0]
@@ -687,7 +697,7 @@ class Evaluator:
         return
 
     # TODO need to go through
-    def plot_report_prediction(self, subj_id, subject_features, prediction, labels):
+    def plot_report_prediction(self, subj, subject_features, prediction, labels):
         """plot prediction reports for a subject in a given output folder"""
         # TODO : needs to better define which features to display
         features_to_plot = [
@@ -701,7 +711,7 @@ class Evaluator:
             ".inter_z.asym.intra_z.combat.on_lh.wm_FLAIR_0.5.sm10.mgh",
             ".inter_z.asym.intra_z.combat.on_lh.wm_FLAIR_1.sm10.mgh",
         ]
-        subj = MeldSubject(subj_id, self.experiment.cohort)
+        # subj = MeldSubject(subj_id, self.experiment.cohort)
         boundary_label = subj.load_boundary_zone(max_distance=20)
 
         # predict lesion and make plot report for each hemisphere
@@ -733,7 +743,7 @@ class Evaluator:
                 data_to_plots,
                 lesion=lesion_combi,
                 feature_names=feature_names,
-                out_filename=os.path.join(self.save_dir, "results", "images", f"qc_{subj_id}_{hemi}.jpeg"),
+                out_filename=os.path.join(self.save_dir, "results", "images", f"qc_{subj.subject_id}_{hemi}.jpeg"),
             )
 
     # TODO: is this function used outside of the class?
@@ -754,7 +764,7 @@ class Evaluator:
                 prediction += single_prediction.ravel() / n_predict
         return prediction
 
-    def divide_subjects(self, subject_ids, n_controls=5):
+    def divide_subjects(self, subjects, n_controls=5):
         """divide subject_ids into patients and controls
         if only trained on patients, controls are added.
         If self.mode is test, controls from test set (defined by dataset csv file) are added.
@@ -765,9 +775,10 @@ class Evaluator:
             # get all valid control ids (with correct features etc)
             data_parameters_copy = self.experiment.data_parameters.copy()
             data_parameters_copy["group"] = "control"
-            control_subs = self.experiment.cohort.get_meld_subjects(**data_parameters_copy, verbose=False)
-            control_ids = [s.subject_id for s in control_subs]
+            control_subjects = self.experiment.cohort.get_meld_subjects(verbose=False)
+            # control_subjects = [s for s in control_subs]
             # shuffle control ids
+            control_ids = [s.subject_id for s in control_subjects]
             np.random.seed(5)
             np.random.shuffle(control_ids)
             # filter controls by self.mode (make sure when mode is test, only test controls are used)
@@ -796,15 +807,17 @@ class Evaluator:
                         len(control_ids), self.mode, n_controls
                     )
                 )
-            patient_ids = subject_ids
+            # control_subjects = [s for s in control_subjects if s.subject_id in control_ids]
+
+            patient_ids = [s.subject_id for s in subjects]
         else:
             patient_ids = []
             control_ids = []
-            for subj_id in subject_ids:
-                if MeldSubject(subj_id, self.experiment.cohort).is_patient:
-                    patient_ids.append(subj_id)
+            for subj in subjects:
+                if subj.is_patient:
+                    patient_ids.append(subj.subject_id)
                 else:
-                    control_ids.append(subj_id)
+                    control_ids.append(subj.subject_id)
         return patient_ids, control_ids
 
 

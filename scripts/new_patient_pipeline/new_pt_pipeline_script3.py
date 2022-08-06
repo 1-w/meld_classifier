@@ -27,6 +27,8 @@ from meld_classifier.predict_newsubject import predict_subjects
 from scripts.manage_results.move_predictions_to_mgh import move_predictions_to_mgh
 import numpy as np
 
+from scripts.manage_results.plot_prediction_report import generate_prediction_report
+
 
 def predict_new_subjects(
     subject_ids, site_code, subjects_dir=FS_SUBJECTS_PATH, experiment_folder="output/classifier_outputs"
@@ -54,13 +56,15 @@ def predict_new_subjects(
 
     # temporary file with subject ids:
 
-    f = NamedTemporaryFile(delete=False, suffix="csv", mode='w')
+    f = NamedTemporaryFile(delete=False, suffix=".csv", mode="w")
     listpath = f.name
     f.write("\n".join(list(subject_ids)))
     f.close()
-    
+
     # Register prediction back to nifti volume
     output_dir = os.path.join(MELD_DATA_PATH, "input")
+    for s in subject_ids:
+        os.makedirs(os.path.join(output_dir, s), exist_ok=True)
     print("output_dir", output_dir)
     command = format(
         f"bash {scripts_dir}/manage_results/register_back_to_xhemi.sh {subjects_dir} {listpath} {output_dir} {scripts_dir}/manage_results"
@@ -68,10 +72,12 @@ def predict_new_subjects(
     sub.check_call(command, shell=True)
 
     # Create individual reports of each identified cluster
-    command = format(
-        f"python {scripts_dir}/manage_results/plot_prediction_report.py --experiment_folder {experiment_folder} --subjects_dir {MELD_DATA_PATH} --list_ids {listpath}"
-    )
-    sub.check_call(command, shell=True)
+    # command = format(
+    #     f"python {scripts_dir}/manage_results/plot_prediction_report.py --experiment_folder {experiment_folder} --subjects_dir {MELD_DATA_PATH} --list_ids {listpath}"
+    # )
+    # sub.check_call(command, shell=True)
+
+    generate_prediction_report(subject_ids, experiment_folder=experiment_folder, subjects_dir=MELD_DATA_PATH)
 
     os.unlink(listpath)
 

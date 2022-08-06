@@ -54,7 +54,9 @@ from meld_classifier.data_preprocessing import Preprocess, Feature
 from meld_classifier.meld_cohort import MeldCohort
 from scripts.data_preparation.run_data_processing_new_subjects import process_new_subjects
 from scripts.new_patient_pipeline.new_site_harmonisation_script import run_site_harmonization
+
 #%% code
+
 
 def sample_flair_smooth_features(subject_id, subjects_dir):
     # if [ ! -e "$s"/surf_meld/rh.w-g.pct.mgh ];  then
@@ -123,16 +125,12 @@ def sample_flair_smooth_features(subject_id, subjects_dir):
 
         # Calculate curvature
         # mris_curvature_stats -f white -g --writeCurvatureFiles "$s" "$h" curv
-        command = (
-            f"SUBJECTS_DIR={subjects_dir} mris_curvature_stats -f white -g --writeCurvatureFiles {subject_id} {hemi} curv"
-        )
+        command = f"SUBJECTS_DIR={subjects_dir} mris_curvature_stats -f white -g --writeCurvatureFiles {subject_id} {hemi} curv"
         print(command)
         proc = Popen(command, shell=True, stderr=STDOUT)
         proc.wait()
         # mris_curvature_stats -f pial -g --writeCurvatureFiles "$s" "$h" curv
-        command = (
-            f"SUBJECTS_DIR={subjects_dir} mris_curvature_stats -f pial -g --writeCurvatureFiles {subject_id} {hemi} curv"
-        )
+        command = f"SUBJECTS_DIR={subjects_dir} mris_curvature_stats -f pial -g --writeCurvatureFiles {subject_id} {hemi} curv"
         print(command)
         proc = Popen(command, shell=True, stderr=STDOUT)
         proc.wait()
@@ -248,7 +246,7 @@ def lesion_labels(subject_id, subjects_dir):
         print("isfile")
 
 
-def create_training_data(subject_id, subjects_dir, output_dir, cortex_label=None, site_code='', group='', scanner=''):
+def create_training_data(subject_id, subjects_dir, output_dir, cortex_label=None, site_code="", group="", scanner=""):
     features = np.array(
         [
             ".on_lh.thickness.mgh",
@@ -271,10 +269,14 @@ def create_training_data(subject_id, subjects_dir, output_dir, cortex_label=None
     medial_wall = np.delete(np.arange(n_vert), cortex_label)
 
     print("saving subject " + subject_id + "...")
-    io_meld.save_subject(subject_id, features, medial_wall, subjects_dir, output_dir, site_code=site_code, group=group, scanner=scanner)
+    io_meld.save_subject(
+        subject_id, features, medial_wall, subjects_dir, output_dir, site_code=site_code, group=group, scanner=scanner
+    )
 
 
-def fast_freesurfer_preprocessing_single_subject(subject, subjects_dir, site_code="", init=None, cortex_label=None, use_fastsurfer =True):
+def fast_freesurfer_preprocessing_single_subject(
+    subject, subjects_dir, site_code="", init=None, cortex_label=None, use_fastsurfer=True
+):
 
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
@@ -282,7 +284,7 @@ def fast_freesurfer_preprocessing_single_subject(subject, subjects_dir, site_cod
     starting_time = time.time()
     # ini_freesurfer = format("$FREESURFER_HOME/SetUpFreeSurfer.sh")
     # proc = check_call(ini_freesurfer, shell=True)
-    print("START SURFING FOR ", subject['id'])
+    print("START SURFING FOR ", subject["id"])
     if init:
         init(multiprocessing.Lock())
 
@@ -292,20 +294,20 @@ def fast_freesurfer_preprocessing_single_subject(subject, subjects_dir, site_cod
         print("STEP 2: FREESURFER PIAL")
         fastsurfer_flair(subject, subjects_dir)
     else:
-        print('USING FREESURFER FOR STEP 1 RECON-ALL and 2 PIAL')
-        #TODO
+        print("USING FREESURFER FOR STEP 1 RECON-ALL and 2 PIAL")
+        # TODO
     print("STEP 3: CREATE XHEMI")
-    create_xhemi(subject['id'], subjects_dir)
+    create_xhemi(subject["id"], subjects_dir)
     print("STEP 4: SAMPLE FLAIR SMOOTH FEATURES")
-    sample_flair_smooth_features(subject['id'], subjects_dir)
+    sample_flair_smooth_features(subject["id"], subjects_dir)
     print("STEP 5: MOVE TO XHEMI FLIP")
-    move_to_xhemi_flip(subject['id'], subjects_dir)
+    move_to_xhemi_flip(subject["id"], subjects_dir)
     print("STEP 6: LESION LABELS")
-    lesion_labels(subject['id'], subjects_dir)
+    lesion_labels(subject["id"], subjects_dir)
     t_sec = round(time.time() - starting_time)
     (t_min, t_sec) = divmod(t_sec, 60)
     (t_hour, t_min) = divmod(t_min, 60)
-    print("DONE SURFING FOR ", subject['id'], f"took {t_hour}hour:{t_min}min:{t_sec}sec")
+    print("DONE SURFING FOR ", subject["id"], f"took {t_hour}hour:{t_min}min:{t_sec}sec")
 
 
 def smooth_features(subjects, output_dir):
@@ -341,33 +343,27 @@ def smooth_features(subjects, output_dir):
 
 def bids_df_to_dictlist(bids_df):
     dictlist = []
-    nifti_selector = bids_df.extension =='.nii.gz'
-    flair_selector = (bids_df.suffix =='FLAIR') * nifti_selector
-    t1_selector = (bids_df.suffix =='T1w') * nifti_selector
+    nifti_selector = bids_df.extension == ".nii.gz"
+    flair_selector = (bids_df.suffix == "FLAIR") * nifti_selector
+    t1_selector = (bids_df.suffix == "T1w") * nifti_selector
 
     for s in bids_df.subject.dropna().unique():
         sub_selector = bids_df.subject == s
         flair_paths = bids_df[sub_selector * flair_selector].path
         if len(flair_paths) != 1:
-            print('Mutliple FLAIR files found for subject',s)
-            flair_path = ''
+            print("Mutliple FLAIR files found for subject", s)
+            flair_path = ""
         else:
             flair_path = flair_paths.iloc[0]
 
         t1_paths = bids_df[sub_selector * t1_selector].path
         if len(t1_paths) != 1:
-            print('Mutliple T1w files found for subject',s)
-            t1_path = ''
+            print("Mutliple T1w files found for subject", s)
+            t1_path = ""
         else:
             t1_path = t1_paths.iloc[0]
-        dictlist.append(
-            {
-                'id':f'sub-{s}',
-                'flair_path':flair_path,
-                't1_path':t1_path
-            }
-        )
-    
+        dictlist.append({"id": f"sub-{s}", "flair_path": flair_path, "t1_path": t1_path})
+
     return dictlist
 
 
@@ -397,27 +393,26 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        '-bids',
-        '--bids_dir',
+        "-bids",
+        "--bids_dir",
         help="BIDS directory containing subjects",
         default="",
         required=False,
     )
 
-    #TODO currently not used
+    # TODO currently not used
     parser.add_argument(
-        '--predict_only',
+        "--predict_only",
         help="Only run predictions",
-        action='store_false',
+        action="store_false",
     )
 
-    #TODO currently not used
+    # TODO currently not used
     parser.add_argument(
-        '-dmp',
-        '--demo_file_path',
-        default='',
+        "-dmp",
+        "--demo_file_path",
+        default="",
     )
-
 
     args = parser.parse_args()
 
@@ -435,28 +430,29 @@ if __name__ == "__main__":
         fast_freesurfer_preprocessing_single_subject(sid, sd, init=init)
         os.sys.exit(0)
 
-    if bids_dir != '':
+    if bids_dir != "":
         bids_df = BIDSLayout(bids_dir, validate=False).to_df()
         subjects = bids_df_to_dictlist(bids_df)
 
-        demographic_file = NamedTemporaryFile(mode='w', delete=False)
+        demographic_file = NamedTemporaryFile(mode="w", delete=False)
         demographic_file_path = demographic_file.name
         demographic_file.close()
 
-        participants_df = pd.read_csv(bids_df[ (bids_df.suffix == 'participants')*(bids_df.extension == '.tsv') ].path.iloc[0],sep='\t')
+        participants_df = pd.read_csv(
+            bids_df[(bids_df.suffix == "participants") * (bids_df.extension == ".tsv")].path.iloc[0], sep="\t"
+        )
 
         demo_df = pd.DataFrame()
-        demo_df['ID'] = participants_df['participant_id']
-        demo_df['Age at preop'] = participants_df['age at scan']
-        demo_df['Sex'] = (participants_df['sex']=='Male')*1
+        demo_df["ID"] = participants_df["participant_id"]
+        demo_df["Age at preop"] = participants_df["age at scan"]
+        demo_df["Sex"] = (participants_df["sex"] == "Male") * 1
 
         demo_df.to_csv(demographic_file_path, index=False)
-    
-    
+
     elif sids != "":
         try:
             df = pd.read_csv(sids)
-            subjects = [{'id':s} for s in df.participant_id.values]
+            subjects = [{"id": s} for s in df.participant_id.values]
         except:
             print("ERROR reading", sids)
             os.sys.exit(-1)
@@ -474,76 +470,85 @@ if __name__ == "__main__":
 
     if not os.path.isfile(os.path.join(sd, "fsaverage_sym/label/lh.cortex.label")):
         # cp -r $FREESURFER_HOME/subjects/fsaverage_sym ./
-        shutil.copytree(opj(os.getenv('FREESURFER_HOME'),'subjects/fsaverage_sym'),opj(sd,'fsaverage_sym'), dirs_exist_ok=True)
+        shutil.copytree(
+            opj(os.getenv("FREESURFER_HOME"), "subjects/fsaverage_sym"), opj(sd, "fsaverage_sym"), dirs_exist_ok=True
+        )
 
     if not os.path.isfile(os.path.join(BASE_PATH, "fsaverage_sym/label/lh.cortex.label")):
-        shutil.copytree(opj(os.getenv('FREESURFER_HOME'),'subjects/fsaverage_sym'),opj(BASE_PATH,'fsaverage_sym'), dirs_exist_ok=True)
+        shutil.copytree(
+            opj(os.getenv("FREESURFER_HOME"), "subjects/fsaverage_sym"),
+            opj(BASE_PATH, "fsaverage_sym"),
+            dirs_exist_ok=True,
+        )
 
     cortex_label = nb.freesurfer.io.read_label(os.path.join(sd, "fsaverage_sym/label/lh.cortex.label"))
 
-    #First do all surfer stuff in parallell
-    with multiprocessing.Pool(num_procs) as pool:
-        pool.map(partial(fast_freesurfer_preprocessing_single_subject, subjects_dir=sd, cortex_label=cortex_label), subjects)
-
-    # for sub in df.participant_id.values:
-    # fast_freesurfer_preprocessing_single_subject(sub, sd)
+    # First do all surfer stuff in parallell
+    # if args.parallel:
+    #     with multiprocessing.Pool(num_procs) as pool:
+    #         pool.map(
+    #             partial(fast_freesurfer_preprocessing_single_subject, subjects_dir=sd, cortex_label=cortex_label), subjects
+    #         )
+    # else:
+    #     for sub in df.participant_id.values:
+    #         fast_freesurfer_preprocessing_single_subject(sub, sd)
 
     print("STEP 7: CREATE TRAINING DATA")
-    #TODO read from bids dataset
+    # TODO read from bids dataset
     site_code = "H101"
-    scanner = '3T'
+    scanner = "3T"
     groups = {}
     #####CAREFUL BIG HACK TO MAKE IT WORK
-    for i in range(1,181):
+    for i in range(1, 181):
         if i <= 146:
-            groups['sub-'+str(i).zfill(5)] = 'patient'
+            groups["sub-" + str(i).zfill(5)] = "patient"
         else:
-            groups['sub-'+str(i).zfill(5)] = 'control'
+            groups["sub-" + str(i).zfill(5)] = "control"
 
-    #create training data for all subjects
-    for subject in subjects:
-        subject_id = subject['id']
-        if site_code == "":
-            try:
-                site_code = subject_id.split("_")[1]  ##according to current MELD naming convention TODO
-            except ValueError:
-                print("Could not recover site code from", subject_id)
-                os.sys.exit(-1)
+    # create training data for all subjects
+    # for subject in subjects:
+    #     subject_id = subject["id"]
+    #     if site_code == "":
+    #         try:
+    #             site_code = subject_id.split("_")[1]  ##according to current MELD naming convention TODO
+    #         except ValueError:
+    #             print("Could not recover site code from", subject_id)
+    #             os.sys.exit(-1)
 
-        output_dir = os.path.join(BASE_PATH, f"MELD_{site_code}")
-        print(BASE_PATH)
-        os.makedirs(output_dir, exist_ok=True)
+    #     output_dir = os.path.join(BASE_PATH, f"MELD_{site_code}")
+    #     print(BASE_PATH)
+    #     os.makedirs(output_dir, exist_ok=True)
 
-        create_training_data(subject_id, sd, output_dir, cortex_label, site_code=site_code, scanner=scanner, group=groups[subject_id])
-
+    #     create_training_data(
+    #         subject_id, sd, output_dir, cortex_label, site_code=site_code, scanner=scanner, group=groups[subject_id]
+    #     )
 
     chunked_subject_list = list()
-    chunk_size = min(len(subjects),20)
-    subject_ids_list = [s['id'] for s in subjects]
+    chunk_size = min(len(subjects), 5)
+    subject_ids_list = [s["id"] for s in subjects]
     for i in range(0, len(subjects), chunk_size):
         chunked_subject_list.append(subject_ids_list[i : i + chunk_size])
 
     print("STEP 8: SMOOTH FEATURES")
-    
-    for chunk in chunked_subject_list:
-        smooth_features(chunk, BASE_PATH)
+
+    # for chunk in chunked_subject_list:
+        # smooth_features(chunk, BASE_PATH)
 
     ###run combat site harmonization
-    print('run site harmonization for', subject_ids_list)
+    print("run site harmonization for", subject_ids_list)
     # print(demographic_file_path)
     # print(pd.read_csv(demographic_file_path))
-    run_site_harmonization(subject_ids_list,site_code='H101',demographic_file_path=demographic_file_path)
-    os.remove(demographic_file_path.name)
+    # run_site_harmonization(subject_ids_list, site_code="H101", demographic_file_path=demographic_file_path)
+    os.remove(demographic_file_path)
 
     ###continue
 
     print("STEP 9: PROCESS NEW SUBJECTS")
-    process_new_subjects(subject_ids_list, "H101", BASE_PATH)
-
+    # process_new_subjects(subject_ids_list, "H101", BASE_PATH)
 
     print("STEP 10: PREDICT NEW SUBJECTS")
-    for chunk in chunked_subject_list:
-        predict_new_subjects(chunk, site_code='H101')
+    for chunk in chunked_subject_list[10:]:
+        predict_new_subjects(chunk, site_code="H101")
 
 
 # %%

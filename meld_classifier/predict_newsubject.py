@@ -13,20 +13,20 @@ import subprocess
 import pandas as pd
 
 
-def create_dataset_file(subjects, output_path):
+def create_dataset_file(subjects_ids, output_path):
     df = pd.DataFrame()
-    subjects_id = [subject for subject in subjects]
-    df["subject_id"] = subjects_id
-    df["split"] = ["test" for subject in subjects]
+    # subjects_ids = [subject for subject in subjects_ids]
+    df["subject_id"] = subjects_ids
+    df["split"] = ["test" for _ in subjects_ids]
     df.to_csv(output_path)
     return df
 
 
-def predict_subjects(subject_ids, new_data_parameters, plot_images=False, saliency=False):
+def predict_subjects(subjects_ids, new_data_parameters, plot_images=False, saliency=False):
     # read subjects
     # subjects_ids = np.loadtxt(list_ids, dtype="str", ndmin=1)
     # create dataset csv
-    create_dataset_file(subject_ids, os.path.join(BASE_PATH, new_data_parameters["dataset"]))
+    create_dataset_file(subjects_ids, os.path.join(BASE_PATH, new_data_parameters["dataset"]))
     # load models
     experiment_path = os.path.join(EXPERIMENT_PATH, MODEL_PATH)
     exp = Experiment(experiment_path=experiment_path, experiment_name=MODEL_NAME)
@@ -35,9 +35,9 @@ def predict_subjects(subject_ids, new_data_parameters, plot_images=False, salien
     exp.cohort = MeldCohort(
         hdf5_file_root=new_data_parameters["hdf5_file_root"], dataset=new_data_parameters["dataset"]
     )
-    subjects = exp.cohort.get_meld_subjects(**new_data_parameters, lesional_only=False)
-    subject_ids = [s['id'] for s in subjects]
-    # print(subject_ids)
+    subjects = exp.cohort.get_meld_subjects(lesional_only=False)
+    # subject_ids = [s.subject_id for s in subjects]
+    print(f"Predicting {len(subjects)} Subjects ...")
     save_dir = new_data_parameters["saved_hdf5_dir"]
     # create sub-folders if do not exist
     os.makedirs(save_dir, exist_ok=True)
@@ -45,6 +45,6 @@ def predict_subjects(subject_ids, new_data_parameters, plot_images=False, salien
     if plot_images:
         os.makedirs(os.path.join(save_dir, "results", "images"), exist_ok=True)
     # launch evaluation
-    eva = Evaluator(exp, mode="inference", subject_ids=subject_ids, save_dir=save_dir)
-    for subject in subject_ids:
+    eva = Evaluator(exp, mode="inference", subjects=subjects, save_dir=save_dir)
+    for subject in subjects:
         eva.load_predict_single_subject(subject, fold="", plot=plot_images, saliency=saliency, suffix="")

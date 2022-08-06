@@ -57,7 +57,7 @@ class Preprocess:
 
     def add_lesion(self, subj):
         hemi = subj.get_lesion_hemisphere()
-        print(hemi)
+        # print(hemi)
         if hemi is not None:
             print("transfer lesion for {}".format(subj.subject_id))
             lesion = subj.load_feature_values(".on_lh.lesion.mgh", hemi)
@@ -91,7 +91,7 @@ class Preprocess:
             hemi = subj.get_lesion_hemisphere()
             if hemi:
                 if subj.has_lesion:
-                    print(ids)
+                    # print(ids)
                     overlay = np.round(subj.load_feature_values(hemi=hemi, feature=".on_lh.lesion.mgh")[:])
                     # smooth a bit for registration, conservative masks etc.
                     if smoothing > 0:
@@ -167,6 +167,8 @@ class Preprocess:
                         parameter_name, shape=np.shape(parameter), dtype=dtype, compression="gzip", compression_opts=9
                     )
                     dset[:] = parameter
+        
+        hdf5_file_context.close()
 
     def read_norm_combat_parameters(self, feature, hdf5_file):
         """reconstruct estimates dictionnary from the combat parameters hdf5 file"""
@@ -180,6 +182,7 @@ class Preprocess:
                     estimates[param] = feat_dir[param].attrs["values"].astype(np.str)
                 else:
                     estimates[param] = feat_dir[param][:]
+        hdf5_file_context.close()
         return estimates
 
     def shrink_combat_estimates(self, estimates):

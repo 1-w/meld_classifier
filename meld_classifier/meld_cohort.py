@@ -68,7 +68,7 @@ class MeldCohort:
             for subj in subjects:
                 features = features.union(subj.get_feature_list().copy())
             self._full_feature_list = sorted(list(features))
-            self.log.info(f"full_feature_list: {self._full_feature_list}")
+            # self.log.info(f"full_feature_list: {self._full_feature_list}")
         return self._full_feature_list
 
     @property
@@ -166,7 +166,7 @@ class MeldCohort:
         for f in glob.glob(os.path.join(self.data_dir, "MELD_*")):
             if os.path.isdir(f):
                 sites.append(f.split("_")[-1])
-        print('found',sites,'sites')
+        print("found", sites, "sites")
         return sites
 
     @contextmanager
@@ -193,7 +193,7 @@ class MeldCohort:
         if hdf5_file_root is None:
             hdf5_file_root = self.hdf5_file_root
 
-        print(self.data_dir)
+        # print(self.data_dir)
 
         p = os.path.join(self.data_dir, f"MELD_{site_code}", hdf5_file_root.format(site_code=site_code, group=group))
         # open existing file or create new one
@@ -211,10 +211,18 @@ class MeldCohort:
             if f is not None:
                 f.close()
 
-    def get_meld_subjects(self, groups=None,site_codes=None,scanners=None,lesional_only=True,subject_features_to_include='', subject_features_to_exclude=''):
+    def get_meld_subjects(
+        self,
+        groups=None,
+        site_codes=None,
+        scanners=None,
+        lesional_only=True,
+        subject_features_to_include="",
+        subject_features_to_exclude="",
+    ):
         # get groups
         if isinstance(groups, str):
-            groups = [group] 
+            groups = [group]
         else:
             groups = ["patient", "control"]
 
@@ -222,7 +230,7 @@ class MeldCohort:
         if isinstance(site_codes, str):
             site_codes = [site_codes]
         else:
-            print('getting sites')
+            print("getting sites")
             site_codes = self.get_sites()
 
         # get scanners
@@ -237,7 +245,7 @@ class MeldCohort:
         if type(subject_features_to_include) == str:
             subject_features_to_include = [subject_features_to_include]
 
-        print('New meld cohort with',site_codes,groups,scanners)
+        # print('New meld cohort with',site_codes,groups,scanners)
         # get subjects for specified groups and sites
         subject_dicts = []
         for site_code in site_codes:
@@ -251,24 +259,24 @@ class MeldCohort:
                     # print(cur_scanners)
                     for scanner in cur_scanners:
                         for subject_id in list(f[os.path.join(site_code, scanner, group)].keys()):
-                            subject_dicts.append({
-                                'id':subject_id,
-                                'group':group,
-                                'scanner':scanner,
-                                'site_code': site_code
-                            })
+                            subject_dicts.append(
+                                {"id": subject_id, "group": group, "scanner": scanner, "site_code": site_code}
+                            )
 
-        # print(f"total number of subjects: {len(subject_dicts)}")
-        
+        print(f"total number of subjects: {len(subject_dicts)}")
+
         self.log.info(f"total number of subjects: {len(subject_dicts)}")
 
         # restrict to ids in dataset (if specified)
         if self.dataset is not None:
-            subjects_in_dataset, _, _ = self.read_subject_ids_from_dataset()
-            subject_dicts = [s for s in subject_dicts if s['id'] in subjects_in_dataset]
-            self.log.info(
-                f"total number of subjects after restricting to subjects from {self.dataset}: {len(subject_dicts)}"
-            )
+            if os.path.isfile(os.path.join(self.data_dir, self.dataset)):
+                subjects_in_dataset, _, _ = self.read_subject_ids_from_dataset()
+                subject_dicts = [s for s in subject_dicts if s["id"] in subjects_in_dataset]
+                self.log.info(
+                    f"total number of subjects after restricting to subjects from {self.dataset}: {len(subject_dicts)}"
+                )
+            else:
+                print("Warning: dataset is not a file:", self.dataset)
 
         # get list of features that is used to filter subjects
         # e.g. use this to filter subjects without FLAIR features
@@ -289,9 +297,15 @@ class MeldCohort:
         # filter ids by scanner, features and whether they have lesions.
         filtered_subject_ids = []
         subjects = []
-        print(subject_dicts)
+        # print(subject_dicts)
         for subject_dict in subject_dicts:
-            subj = MeldSubject(subject_dict['id'], self,site_code=subject_dict['site_code'], scanner=subject_dict['scanner'],group=subject_dict['group'])
+            subj = MeldSubject(
+                subject_dict["id"],
+                self,
+                site_code=subject_dict["site_code"],
+                scanner=subject_dict["scanner"],
+                group=subject_dict["group"],
+            )
             # check scanner
             if subj.scanner not in scanners:
                 continue
@@ -305,7 +319,15 @@ class MeldCohort:
             if lesional_only and subj.is_patient and not subj.has_lesion():
                 continue
             # subject has passed all filters, add to list
-            subjects.append(MeldSubject(subject_dict['id'], self,site_code=subject_dict['site_code'], scanner=subject_dict['scanner'],group=subject_dict['group']))
+            subjects.append(
+                MeldSubject(
+                    subject_dict["id"],
+                    self,
+                    site_code=subject_dict["site_code"],
+                    scanner=subject_dict["scanner"],
+                    group=subject_dict["group"],
+                )
+            )
 
         self.log.info(
             f"total number after filtering by scanner {scanners}, features, lesional_only {lesional_only}: {len(subjects)}"
@@ -315,7 +337,15 @@ class MeldCohort:
         )
         return subjects
 
-    def get_subject_ids(self, groups='',site_codes='',scanners='',lesional_only=True,subject_features_to_include='', subject_features_to_exclude=''):
+    def get_subject_ids(
+        self,
+        groups="",
+        site_codes="",
+        scanners="",
+        lesional_only=True,
+        subject_features_to_include="",
+        subject_features_to_exclude="",
+    ):
         """Output list of subject_ids.
 
         List can be filtered by sites (given as list of site_codes, e.g. 'H2'),
@@ -340,19 +370,19 @@ class MeldCohort:
         """
         # parse kwargs:
         # get groups
-        if groups == '':
+        if groups == "":
             groups = ["patient", "control"]
         else:
             groups = [group]
         # get sites
-        if site_codes == '':
+        if site_codes == "":
             site_codes = self.get_sites()
 
         if isinstance(site_codes, str):
             site_codes = [site_code]
 
         # get scanners
-        if scanners == '':
+        if scanners == "":
             scanners = ["3T", "15T"]
         if not isinstance(scanners, list):
             scanners = [scanners]
@@ -423,8 +453,6 @@ class MeldCohort:
         )
         return filtered_subject_ids
 
-    
-
     def get_features(self, features_to_exclude=[""]):
         """
         get filtered list of features.
@@ -494,20 +522,20 @@ class MeldSubject:
     individual patient from meld cohort, can read subject data and other info
     """
 
-    def __init__(self, subject_id, cohort, site_code = '', scanner ='',group=''):
+    def __init__(self, subject_id, cohort, site_code="", scanner="", group=""):
         self.subject_id = subject_id
 
-        if site_code == '':
+        if site_code == "":
             self.group = self.subject_id.split("_")[1]
         else:
             self.site_code = site_code
-        
-        if scanner == '':
+
+        if scanner == "":
             self.scanner = self.subject_id.split("_")[2]
         else:
-            self.scanner =scanner
-        
-        if group == '':
+            self.scanner = scanner
+
+        if group == "":
             group = self.subject_id.split("_")[3]
             if group == "FCD":
                 self.group = "patient"
@@ -788,6 +816,8 @@ class MeldSubject:
                     feature, shape=(NVERT,), dtype="float32", compression="gzip", compression_opts=9
                 )
                 dset[:] = hemi_data
+        if isinstance(hdf5_file_context, h5py.File):
+            hdf5_file_context.close()
 
     def delete(self, f, feat):
         print("delete")
