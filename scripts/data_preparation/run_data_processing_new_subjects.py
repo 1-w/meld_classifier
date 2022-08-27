@@ -76,12 +76,12 @@ def process_new_subjects(subject_ids, site_code, output_dir, use_flair=True):
     #get combat parameters
     combat_params_file = which_combat_file(site_code)
     #create object combat
-    combat = Preprocess(c_smooth,
+    combat = Preprocess(c_smooth, site_codes=[site_code],
                        write_hdf5_file_root='{site_code}_{group}_featurematrix_combat.hdf5',
                        data_dir=output_dir)
     #features names
     for feature in features_smooth:
-        print(feature)
+        # print(feature)
         combat.combat_new_subject(feature, combat_params_file)
     
 
@@ -98,7 +98,7 @@ def process_new_subjects(subject_ids, site_code, output_dir, use_flair=True):
                         data_dir=output_dir)
     # call functions to normalise data
     for feature in features_combat:
-        print(feature)
+        # print(feature)
         norm.intra_inter_subject(feature, params_norm = param_norms_file)
         norm.asymmetry_subject(feature, params_norm = param_norms_file )
 

@@ -34,9 +34,11 @@ from functools import partial
 import time
 from datetime import datetime
 from bids import BIDSLayout
+import sys
 
 # from multiprocessing import set_start_method
 # set_start_method("spawn")
+sys.path.append("../../meld_classifier")  # added!
 from meld_classifier.paths import BASE_PATH, NEWSUBJECTS_DATASET, CLIPPING_PARAMS_FILE
 
 import numpy as np
@@ -55,6 +57,8 @@ from meld_classifier.meld_cohort import MeldCohort
 from scripts.data_preparation.run_data_processing_new_subjects import process_new_subjects
 from scripts.new_patient_pipeline.new_site_harmonisation_script import run_site_harmonization
 
+
+SITE_CODE = "H998"
 #%% code
 
 
@@ -310,7 +314,7 @@ def fast_freesurfer_preprocessing_single_subject(
     print("DONE SURFING FOR ", subject["id"], f"took {t_hour}hour:{t_min}min:{t_sec}sec")
 
 
-def smooth_features(subjects, output_dir):
+def smooth_features(subjects, output_dir, site_codes=None):
     features = {
         ".on_lh.thickness.mgh": 10,
         ".on_lh.w-g.pct.mgh": 10,
@@ -334,7 +338,10 @@ def smooth_features(subjects, output_dir):
     )
 
     smoothing = Preprocess(
-        c_raw, write_hdf5_file_root="{site_code}_{group}_featurematrix_smoothed.hdf5", data_dir=output_dir
+        c_raw,
+        site_codes=site_codes,
+        write_hdf5_file_root="{site_code}_{group}_featurematrix_smoothed.hdf5",
+        data_dir=output_dir,
     )
     for feature in np.sort(list(set(features))):
         print(feature)
@@ -407,6 +414,8 @@ if __name__ == "__main__":
         action="store_false",
     )
 
+    parser.add_argument("-pl", "--parallel", action="store_true", default=True)
+
     # TODO currently not used
     parser.add_argument(
         "-dmp",
@@ -430,24 +439,34 @@ if __name__ == "__main__":
         fast_freesurfer_preprocessing_single_subject(sid, sd, init=init)
         os.sys.exit(0)
 
+    demographic_file_path = args.demo_file_path
+
     if bids_dir != "":
         bids_df = BIDSLayout(bids_dir, validate=False).to_df()
         subjects = bids_df_to_dictlist(bids_df)
 
-        demographic_file = NamedTemporaryFile(mode="w", delete=False)
-        demographic_file_path = demographic_file.name
-        demographic_file.close()
-
         participants_df = pd.read_csv(
             bids_df[(bids_df.suffix == "participants") * (bids_df.extension == ".tsv")].path.iloc[0], sep="\t"
         )
+        print(bids_df[(bids_df.suffix == "participants") * (bids_df.extension == ".tsv")].path.iloc[0])
+        # CAREFUL BIG HACK TO MAKE IT WORK TODO
+        # for datastudy
+        groups = {}
+        for i, r in participants_df.iterrows():
+            groups[r.participant_id] = "patient" if r.group == "fcd" else "control"
 
-        demo_df = pd.DataFrame()
-        demo_df["ID"] = participants_df["participant_id"]
-        demo_df["Age at preop"] = participants_df["age at scan"]
-        demo_df["Sex"] = (participants_df["sex"] == "Male") * 1
+        if demographic_file_path == "":
+            demographic_file = NamedTemporaryFile(mode="w", delete=False)
+            demographic_file_path = demographic_file.name
+            demographic_file.close()
 
-        demo_df.to_csv(demographic_file_path, index=False)
+            # datastudy participant fields
+            demo_df = pd.DataFrame()
+            demo_df["ID"] = participants_df["participant_id"]
+            demo_df["Age at preop"] = participants_df["age_scan"] * 5 - 2.5
+            demo_df["Sex"] = (participants_df["sex"] == "M") * 1
+
+            demo_df.to_csv(demographic_file_path, index=False)
 
     elif sids != "":
         try:
@@ -456,6 +475,10 @@ if __name__ == "__main__":
         except:
             print("ERROR reading", sids)
             os.sys.exit(-1)
+    elif demographic_file_path != "":
+        tmpdf = pd.read_csv(demographic_file_path)
+        # BIG HACK TO MAKE IT WORK
+        subjects = [{"id": x.replace("H101", SITE_CODE)} for x in tmpdf["ID"]]
 
     # subjects = subjects[0:2]
 
@@ -495,33 +518,39 @@ if __name__ == "__main__":
 
     print("STEP 7: CREATE TRAINING DATA")
     # TODO read from bids dataset
-    site_code = "H101"
+    site_code = SITE_CODE
+    # site_code = ""
     scanner = "3T"
-    groups = {}
+    if not isinstance(groups, dict):
+        groups = {}
     #####CAREFUL BIG HACK TO MAKE IT WORK
-    for i in range(1, 181):
-        if i <= 146:
-            groups["sub-" + str(i).zfill(5)] = "patient"
-        else:
-            groups["sub-" + str(i).zfill(5)] = "control"
+    # for datastudy:
+    # for fcd180:
+    # for i in range(1, len(subjects)+1):
+    #     if i <= 146:
+    #         groups["sub-" + str(i).zfill(5)] = "patient"
+    #     else:
+    #         groups["sub-" + str(i).zfill(5)] = "control"
 
     # create training data for all subjects
-    # for subject in subjects:
-    #     subject_id = subject["id"]
-    #     if site_code == "":
-    #         try:
-    #             site_code = subject_id.split("_")[1]  ##according to current MELD naming convention TODO
-    #         except ValueError:
-    #             print("Could not recover site code from", subject_id)
-    #             os.sys.exit(-1)
+    for subject in subjects:
+        subject_id = subject["id"]
+        if site_code == "":
+            try:
+                site_code = subject_id.split("_")[1]  ##according to current MELD naming convention TODO
+            except ValueError:
+                print("Could not recover site code from", subject_id)
+                os.sys.exit(-1)
 
-    #     output_dir = os.path.join(BASE_PATH, f"MELD_{site_code}")
-    #     print(BASE_PATH)
-    #     os.makedirs(output_dir, exist_ok=True)
+        output_dir = os.path.join(BASE_PATH, f"MELD_{site_code}")
+        print(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
-    #     create_training_data(
-    #         subject_id, sd, output_dir, cortex_label, site_code=site_code, scanner=scanner, group=groups[subject_id]
-    #     )
+        # create_training_data(
+        #     subject_id, sd, output_dir, cortex_label, site_code=site_code, scanner=scanner, group=groups[subject_id]
+        # )
+
+        # create_training_data(subject_id, sd, output_dir, cortex_label)
 
     chunked_subject_list = list()
     chunk_size = min(len(subjects), 5)
@@ -532,23 +561,45 @@ if __name__ == "__main__":
     print("STEP 8: SMOOTH FEATURES")
 
     # for chunk in chunked_subject_list:
-        # smooth_features(chunk, BASE_PATH)
+    #     smooth_features(chunk, BASE_PATH, site_codes=[site_code])
 
     ###run combat site harmonization
-    print("run site harmonization for", subject_ids_list)
-    # print(demographic_file_path)
-    # print(pd.read_csv(demographic_file_path))
-    # run_site_harmonization(subject_ids_list, site_code="H101", demographic_file_path=demographic_file_path)
-    os.remove(demographic_file_path)
+    print("run site harmonization for", len(subject_ids_list), "subjects")
+    print(demographic_file_path)
+    print(pd.read_csv(demographic_file_path))
+    # run_site_harmonization(subject_ids_list, site_code=SITE_CODE, demographic_file_path=demographic_file_path)
+    # os.remove(demographic_file_path)
 
     ###continue
 
     print("STEP 9: PROCESS NEW SUBJECTS")
-    # process_new_subjects(subject_ids_list, "H101", BASE_PATH)
+    # process_new_subjects(subject_ids_list, SITE_CODE, BASE_PATH)
 
     print("STEP 10: PREDICT NEW SUBJECTS")
-    for chunk in chunked_subject_list[10:]:
-        predict_new_subjects(chunk, site_code="H101")
+    # only predict patients
+    chunked_patient_list = list()
+    patient_ids_list = [s["id"] for s in subjects if groups[s["id"]] == "patient"]
+    # patient_ids_list = [s["id"] for s in subjects if "FCD" in s["id"]]
+    chunk_size = min(len(subjects), 5)
+    print("Predicting", len(patient_ids_list), "patients...")
+
+    patient_list_remaining = [
+        x
+        for x in patient_ids_list
+        if not os.path.isfile(
+            f"/home/lennartw/wdir/other_projects/meld_classifier/data/input/{x}/predictions/prediction.nii"
+        )
+    ]
+    chunk_size = min(len(patient_list_remaining), 5)
+    print("Predicting remaining", len(patient_list_remaining), "patients...")
+
+    for i in range(0, len(patient_list_remaining), chunk_size):
+        chunked_patient_list.append(patient_list_remaining[i : i + chunk_size])
+    # for i in range(0, len(patient_ids_list), chunk_size):
+    #     chunked_patient_list.append(patient_ids_list[i : i + chunk_size])
+
+    for chunk in chunked_patient_list:
+        predict_new_subjects(chunk, site_codes=[SITE_CODE])
 
 
 # %%

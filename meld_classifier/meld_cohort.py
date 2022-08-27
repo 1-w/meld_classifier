@@ -1,5 +1,6 @@
 # Contains MeldCohort and MeldSubject classes
 
+from array import array
 from contextlib import contextmanager
 from meld_classifier.paths import (
     DEMOGRAPHIC_FEATURES_FILE,
@@ -25,7 +26,7 @@ class MeldCohort:
 
     """Class to define cohort-level parameters such as subject ids, mesh"""
 
-    def __init__(self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH):
+    def __init__(self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH, site_codes=None, groups=None, scanners=None):
         # print('meld cohort with datadir', data_dir)
         self.data_dir = data_dir
         self.hdf5_file_root = hdf5_file_root
@@ -55,7 +56,7 @@ class MeldCohort:
         # neighbours: list of neighbours for each vertex
         self._neighbours = None
 
-        self.subjects = self.get_meld_subjects()
+        self.subjects = self.get_meld_subjects(site_codes=site_codes, groups=groups, scanners=scanners)
 
     @property
     def full_feature_list(self):
@@ -220,23 +221,26 @@ class MeldCohort:
         subject_features_to_include="",
         subject_features_to_exclude="",
     ):
+
+        print('Getting meld subjects from groups',groups,'site_codes',site_codes,'and scanners', scanners)
+
         # get groups
         if isinstance(groups, str):
             groups = [group]
-        else:
+        elif isinstance(groups, type(None)):
             groups = ["patient", "control"]
 
         # get sites
         if isinstance(site_codes, str):
             site_codes = [site_codes]
-        else:
+        elif isinstance(site_codes, type(None)):
             print("getting sites")
             site_codes = self.get_sites()
 
         # get scanners
         if isinstance(scanners, str):
             scanners = [scanners]
-        else:
+        elif isinstance(scanners, type(None)):
             scanners = ["3T", "15T"]
 
         if type(subject_features_to_exclude) == str:

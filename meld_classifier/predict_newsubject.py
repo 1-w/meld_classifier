@@ -22,7 +22,7 @@ def create_dataset_file(subjects_ids, output_path):
     return df
 
 
-def predict_subjects(subjects_ids, new_data_parameters, plot_images=False, saliency=False):
+def predict_subjects(subjects_ids, new_data_parameters, site_codes = None, plot_images=False, saliency=False):
     # read subjects
     # subjects_ids = np.loadtxt(list_ids, dtype="str", ndmin=1)
     # create dataset csv
@@ -33,9 +33,9 @@ def predict_subjects(subjects_ids, new_data_parameters, plot_images=False, salie
     exp.init_logging()
     # load information to predict on new subjects
     exp.cohort = MeldCohort(
-        hdf5_file_root=new_data_parameters["hdf5_file_root"], dataset=new_data_parameters["dataset"]
+        hdf5_file_root=new_data_parameters["hdf5_file_root"], dataset=new_data_parameters["dataset"], site_codes=site_codes
     )
-    subjects = exp.cohort.get_meld_subjects(lesional_only=False)
+    subjects = exp.cohort.get_meld_subjects(site_codes=site_codes, lesional_only=False)
     # subject_ids = [s.subject_id for s in subjects]
     print(f"Predicting {len(subjects)} Subjects ...")
     save_dir = new_data_parameters["saved_hdf5_dir"]

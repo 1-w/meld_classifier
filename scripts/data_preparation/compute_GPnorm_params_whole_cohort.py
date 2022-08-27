@@ -67,16 +67,16 @@ if len(controls_ids) == 0:
 
 features = [
          ".combat.on_lh.thickness.sm10.mgh",
-#         ".combat.on_lh.w-g.pct.sm10.mgh",
-#         '.combat.on_lh.curv.sm5.mgh',
-#          '.combat.on_lh.gm_FLAIR_0.25.sm10.mgh',
-#          '.combat.on_lh.gm_FLAIR_0.5.sm10.mgh',
-#          '.combat.on_lh.gm_FLAIR_0.75.sm10.mgh',
-#          '.combat.on_lh.gm_FLAIR_0.sm10.mgh',
-#          '.combat.on_lh.pial.K_filtered.sm20.mgh',
-#          '.combat.on_lh.sulc.sm5.mgh',
-#          '.combat.on_lh.wm_FLAIR_0.5.sm10.mgh',
-#          '.combat.on_lh.wm_FLAIR_1.sm10.mgh',
+        ".combat.on_lh.w-g.pct.sm10.mgh",
+        '.combat.on_lh.curv.sm5.mgh',
+         '.combat.on_lh.gm_FLAIR_0.25.sm10.mgh',
+         '.combat.on_lh.gm_FLAIR_0.5.sm10.mgh',
+         '.combat.on_lh.gm_FLAIR_0.75.sm10.mgh',
+         '.combat.on_lh.gm_FLAIR_0.sm10.mgh',
+         '.combat.on_lh.pial.K_filtered.sm20.mgh',
+         '.combat.on_lh.sulc.sm5.mgh',
+         '.combat.on_lh.wm_FLAIR_0.5.sm10.mgh',
+         '.combat.on_lh.wm_FLAIR_1.sm10.mgh',
 ]
 # for each feature, compute GP normalisation parameters and save them
 for feature in features : 

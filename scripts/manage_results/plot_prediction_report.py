@@ -306,7 +306,13 @@ def generate_prediction_report(
         result_hemis = load_prediction(subject.subject_id, hdf_predictions)
         number_cluster = load_cluster(csv_results, subject.subject_id)
         # Open their MRI data if available
-        t1_file = glob.glob(os.path.join(subject_dir, "T1", "*T1*.nii*"))[0]
+        t1glob = glob.glob(os.path.join(subject_dir, "T1", "*T1*.nii*"))
+        if len(t1glob) == 1:
+            t1_file = t1glob[0]
+        else:
+            print("Could not find T1 image for subject", subject.subject_id)
+            continue
+
         prediction_file_lh = glob.glob(os.path.join(b, "predictions", "lh.prediction*"))[0]
         prediction_file_rh = glob.glob(os.path.join(subject_dir, "predictions", "rh.prediction*"))[0]
         # load image

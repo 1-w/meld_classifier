@@ -33,6 +33,7 @@ import meld_classifier.distributedCombat as dc
 
 class Preprocess:
     def __init__(self, cohort, site_codes=None, write_hdf5_file_root=None, data_dir=BASE_PATH):
+        print('Init Preprocess class with site_codes', site_codes)
         self.cohort = cohort
         self._covars = None
         self.write_hdf5_file_root = write_hdf5_file_root
@@ -293,7 +294,12 @@ class Preprocess:
         precombat_features = []
         combat_subject_include = np.zeros(len(self.subjects), dtype=bool)
         demos = []
+        print('Checking', len(self.subjects), 'for harmonization...')
         for k, subj in enumerate(self.subjects):
+            if subj.site_code != site_code:
+                combat_subject_include[k] = False
+                print('Dismissing subject', subj.subject_id, 'wrong site code:', subj.site_code)
+                continue
             # get the reference index and cohort object for the site, 0 whole cohort, 1 new cohort
             site_code_index = site_codes[k]
             # subj = MeldSubject(subject, cohort=self.cohort)
@@ -306,10 +312,12 @@ class Preprocess:
                 combat_subject_include[k] = True
             else:
                 combat_subject_include[k] = False
+                print('Dismissing subject', subj.subject_id, "doesn't have feature")
 
-        # print(listids)
+
+        print('Using', np.sum(combat_subject_include), 'for harmonization')
         # load in covariates - age, sex, group, site and scanner unless provided
-        print('Subject Ids for covars',[s.subject_id for s in np.array(self.subjects)[np.array(combat_subject_include)]])
+        # print('Subject Ids for covars',[s.subject_id for s in np.array(self.subjects)[np.array(combat_subject_include)]])
         new_site_covars = self.load_covars(
             subjects=np.array(self.subjects)[np.array(combat_subject_include)], demographic_file=demographic_file
         ).copy()

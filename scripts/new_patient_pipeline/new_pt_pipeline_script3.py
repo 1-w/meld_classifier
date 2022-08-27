@@ -31,7 +31,7 @@ from scripts.manage_results.plot_prediction_report import generate_prediction_re
 
 
 def predict_new_subjects(
-    subject_ids, site_code, subjects_dir=FS_SUBJECTS_PATH, experiment_folder="output/classifier_outputs"
+    subject_ids, site_codes, subjects_dir=FS_SUBJECTS_PATH, experiment_folder="output/classifier_outputs"
 ):
     scripts_dir = os.path.join(SCRIPTS_DIR, "scripts")
 
@@ -46,7 +46,7 @@ def predict_new_subjects(
     print(new_data_parameters["dataset"])
     print(new_data_parameters["saved_hdf5_dir"])
 
-    predict_subjects(subject_ids, new_data_parameters, plot_images=True, saliency=True)
+    predict_subjects(subject_ids, new_data_parameters, site_codes=site_codes, plot_images=True, saliency=True)
 
     # Register predictions to native space
     # command = format(f"python {scripts_dir}/manage_results/move_predictions_to_mgh.py --experiment_folder {exp_fold} --subjects_dir {subjects_dir} --list_ids {subject_ids}")
