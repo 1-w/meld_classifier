@@ -127,7 +127,7 @@ def register_subject_to_xhemi(subject_ids, subjects_dir, output_dir, template = 
             proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
             proc.wait()    
             #convert to nifti
-            command = f'SUBJECTS_DIR={subjects_dir} mri_convert {subjects_dir}/{subject_id}/mri/{hemi}.prediction.mgz {subjects_dir}/{subject_id}/mri/{hemi}.prediction.nii -rt nearest'
+            command = f'SUBJECTS_DIR={subjects_dir} mri_convert {subjects_dir}/{subject_id}/mri/{hemi}.prediction.mgz {subjects_dir}/{subject_id}/mri/{hemi}.prediction.nii.gz -rt nearest'
             if verbose:
                 stdout = STDOUT
             else:
@@ -138,11 +138,11 @@ def register_subject_to_xhemi(subject_ids, subjects_dir, output_dir, template = 
         save_dir=opj(output_dir,subject_id,'predictions')
         os.makedirs(save_dir, exist_ok=True)
             
-        shutil.move(f'{subjects_dir}/{subject_id}/mri/lh.prediction.nii', f'{save_dir}/lh.prediction.nii')
-        shutil.move(f'{subjects_dir}/{subject_id}/mri/rh.prediction.nii', f'{save_dir}/rh.prediction.nii')
+        shutil.move(f'{subjects_dir}/{subject_id}/mri/lh.prediction.nii.gz', f'{save_dir}/lh.prediction.nii.gz')
+        shutil.move(f'{subjects_dir}/{subject_id}/mri/rh.prediction.nii.gz', f'{save_dir}/rh.prediction.nii.gz')
             
         #combine vols from left and right hemis
-        command=f'mri_concat --i {save_dir}/lh.prediction.nii --i {save_dir}/rh.prediction.nii --o {save_dir}/prediction.nii --combine'
+        command=f'mri_concat --i {save_dir}/lh.prediction.nii.gz --i {save_dir}/rh.prediction.nii.gz --o {save_dir}/prediction.nii.gz --combine'
         if verbose:
             stdout = STDOUT
         else:
