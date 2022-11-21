@@ -5,7 +5,7 @@ import shutil
 import scipy
 from scipy import stats as st
 from os.path import join as opj
-from subprocess import check_call, DEVNULL, STDOUT
+from subprocess import Popen, DEVNULL, STDOUT
 import meld_classifier.mesh_tools as mt
 from meld_classifier.tools_commands_prints import get_m, run_command
 
@@ -113,20 +113,27 @@ def register_subject_to_xhemi(subject_ids, subjects_dir, output_dir, template = 
 
             #convert to nifti
             command = f'SUBJECTS_DIR={subjects_dir} mri_convert {subjects_dir}/{subject_id}/mri/{hemi}.prediction.mgz {subjects_dir}/{subject_id}/mri/{hemi}.prediction.nii -rt nearest'
-            # check_call(command,shell=True, stdout = DEVNULL, stderr=STDOUT)
-            proc = run_command(command, verbose=verbose)
-            
+            if verbose:
+                stdout = STDOUT
+            else:
+                stdout = DEVNULL
+            proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
+            proc.wait()                
         #move files
         save_dir=opj(output_dir,subject_id,'predictions')
         os.makedirs(save_dir, exist_ok=True)
             
-        shutil.move(f'{subjects_dir}/{subject_id}/mri/lh.prediction.nii', f'{save_dir}/lh.prediction.nii')
-        shutil.move(f'{subjects_dir}/{subject_id}/mri/rh.prediction.nii', f'{save_dir}/rh.prediction.nii')
+        shutil.move(f'{subjects_dir}/{subject_id}/mri/lh.prediction.nii.gz', f'{save_dir}/lh.prediction.nii.gz')
+        shutil.move(f'{subjects_dir}/{subject_id}/mri/rh.prediction.nii.gz', f'{save_dir}/rh.prediction.nii.gz')
             
         #combine vols from left and right hemis
-        command=f'mri_concat --i {save_dir}/lh.prediction.nii --i {save_dir}/rh.prediction.nii --o {save_dir}/prediction.nii --combine'
-        # check_call(command,shell=True, stdout = DEVNULL, stderr=STDOUT)
-        proc = run_command(command, verbose=verbose)
+        command=f'mri_concat --i {save_dir}/lh.prediction.nii.gz --i {save_dir}/rh.prediction.nii.gz --o {save_dir}/prediction.nii.gz --combine'
+        if verbose:
+            stdout = STDOUT
+        else:
+            stdout = DEVNULL
+        proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
+        proc.wait()    
 
 if __name__ == "__main__":
     pass
