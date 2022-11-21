@@ -4,10 +4,10 @@ from functools import partial
 import os
 from os.path import join as opj
 import shutil
-from subprocess import Popen,  STDOUT, DEVNULL
+from subprocess import Popen, STDOUT, DEVNULL
 from argparse import ArgumentParser
 import multiprocessing
-from meld_classifier.tools_commands_prints import get_m, run_command
+from meld_classifier.tools_commands_prints import get_m
 
 def create_xhemi(subject_id, subjects_dir,template = 'fsaverage_sym', verbose=False):
     
@@ -20,16 +20,22 @@ def create_xhemi(subject_id, subjects_dir,template = 'fsaverage_sym', verbose=Fa
     if not os.path.isdir(opj(subjects_dir,template)):
         shutil.copytree(opj(os.environ['FREESURFER_HOME'],'subjects',template), opj(subjects_dir, os.path.basename(template)))
 
-    if not os.path.isfile(opj(subjects_dir,subject_id,'surf','lh.fsaverage_sym.sphere.reg')):
-        command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh'    
-        # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-        proc = run_command(command, verbose=verbose)
+    if not os.path.isfile(opj(subjects_dir, subject_id, "surf", "lh.fsaverage_sym.sphere.reg")):
+        command = f"SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh"
+        if verbose:
+            stdout = STDOUT
+        else:
+            stdout = DEVNULL
+        proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
         proc.wait()
 
-    if not os.path.isfile(opj(subjects_dir,subject_id,'xhemi','surf','lh.fsaverage_sym.sphere.reg')):
-        command = f'SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh --xhemi'
-        # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-        proc = run_command(command, verbose=verbose)
+    if not os.path.isfile(opj(subjects_dir, subject_id, "xhemi", "surf", "lh.fsaverage_sym.sphere.reg")):
+        command = f"SUBJECTS_DIR={subjects_dir} surfreg --s {subject_id} --t {template} --lh --xhemi"
+        if verbose:
+            stdout = STDOUT
+        else:
+            stdout = DEVNULL
+        proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
         proc.wait()
 
 

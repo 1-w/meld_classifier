@@ -14,7 +14,7 @@ from sqlite3 import paramstyle
 import sys
 import argparse
 import subprocess
-# from subprocess import Popen, DEVNULL, STDOUT, check_call
+
 import threading
 import multiprocessing
 from functools import partial
@@ -30,13 +30,14 @@ from scripts.data_preparation.extract_features.move_to_xhemi_flip import move_to
 from meld_classifier.meld_cohort import MeldCohort
 from meld_classifier.data_preprocessing import Preprocess
 from os.path import join as opj
-from meld_classifier.tools_commands_prints import get_m, run_command
+from meld_classifier.tools_commands_prints import get_m
+
+from subprocess import Popen, STDOUT, DEVNULL
 
 
 def init(lock):
     global starting
     starting = lock
-
 
 
 def fastsurfer_subject(subject, fs_folder, verbose=False):
@@ -58,7 +59,7 @@ def fastsurfer_subject(subject, fs_folder, verbose=False):
         return
 
     # select inputs files T1 and FLAIR
-    if subject_t1_path == '':
+    if subject_t1_path == "":
         # assume meld data structure
         subject_dir = opj(MELD_DATA_PATH, "input", subject_id)
         subject_t1_path = glob.glob(opj(subject_dir, "T1", "*T1*.nii*"))
@@ -82,7 +83,11 @@ def fastsurfer_subject(subject, fs_folder, verbose=False):
     print(get_m('Start cortical parcellation (up to 2h). Please wait', subject_id, 'INFO'))
     print(get_m(f'Results will be stored in {fs_folder}', subject_id, 'INFO'))
     starting.acquire()  # no other process can get it until it is released
-    proc = run_command(command, verbose=verbose) 
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
     threading.Timer(120, starting.release).start()  # release in two minutes
     proc.wait()
     print(get_m(f'Finished cortical parcellation', subject_id, 'INFO'))
@@ -122,10 +127,15 @@ def fastsurfer_flair(subject, fs_folder, verbose=False):
 
     print(get_m("Starting FLAIRpial", subject_id, 'INFO'))
     command = format(
-        "recon-all -sd {} -subject {} -FLAIR {} -FLAIRpial -autorecon3".format(fs_folder, subject_id, subject_flair_path)
+        "recon-all -sd {} -subject {} -FLAIR {} -FLAIRpial -autorecon3".format(
+            fs_folder, subject_id, subject_flair_path
+        )
     )
-    # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT) 
-    proc = run_command(command, verbose=verbose)
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
     proc.wait()
     print(get_m("Finished FLAIRpial", subject_id, "INFO"))
 
@@ -196,15 +206,19 @@ def freesurfer_subject(subject, fs_folder, verbose=False):
     print(get_m('Start cortical parcellation (up to 36h). Please wait', subject_id, 'INFO'))
     print(get_m(f'Results will be stored in {fs_folder}', subject_id, 'INFO'))
     starting.acquire()  # no other process can get it until it is released
-    # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-    proc = run_command(command, verbose=verbose)
-    if proc.returncode == 0 :
-        print(get_m('Finished cortical parcellation', subject_id, 'INFO'))
+    if verbose:
+        stdout = STDOUT
     else:
-        print(get_m('Something went wrong during segmentation. Check the recon-all log', subject_id, 'WARNING'))
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
+
     threading.Timer(120, starting.release).start()  # release in two minutes
     proc.wait()
-    
+    if proc.returncode == 0:
+        print(get_m("Finished cortical parcellation", subject_id, "INFO"))
+    else:
+        print(get_m("Something went wrong during segmentation. Check the recon-all log", subject_id, "WARNING"))
+
 
 def extract_features(subject_id, fs_folder, output_dir, verbose=False):
     # Launch script to extract surface-based features from freesurfer outputs
@@ -281,8 +295,12 @@ def run_subjects_segmentation_and_smoothing_parallel(subject_ids, num_procs=10, 
 
     ### SEGMENTATION ###
     ini_freesurfer = format("$FREESURFER_HOME/SetUpFreeSurfer.sh")
-    proc = run_command(ini_freesurfer)
-
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(ini_freesurfer, shell=True, stdout=stdout, stderr=STDOUT)
+    proc.wait()
     ## Make a directory for the outputs
     fs_folder = FS_SUBJECTS_PATH
     os.makedirs(fs_folder, exist_ok=True)
@@ -327,9 +345,12 @@ def run_subject_segmentation_and_smoothing(subject, site_code="", use_fastsurfer
     
     ### SEGMENTATION ###
     ini_freesurfer = format("$FREESURFER_HOME/SetUpFreeSurfer.sh")
-    # check_call(ini_freesurfer, shell=True, stdout = DEVNULL, stderr=STDOUT)
-    proc = run_command(ini_freesurfer)
-    
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(ini_freesurfer, shell=True, stdout=stdout, stderr=STDOUT)
+    proc.wait()
     ## Make a directory for the outputs
     fs_folder = FS_SUBJECTS_PATH
     os.makedirs(fs_folder, exist_ok=True)

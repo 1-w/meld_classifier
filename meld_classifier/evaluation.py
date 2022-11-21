@@ -615,23 +615,18 @@ class Evaluator:
             mode = "a"
         else:
             mode = "r+"
-        done = False
-        while not done:
-            try:
-                with h5py.File(filename, mode=mode) as f:
-                    self.log.info(f"saving {dataset_str} for {subject}")
-                    for i, hemi in enumerate(["lh", "rh"]):
-                        shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
-                        # create dataset
-                        dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
-                        # save prediction in dataset
-                        dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
-                        if dataset_str == "prediction":
-                            # save threshold as attribute in dataset
-                            dset.attrs["threshold"] = self.threshold
-                    done = True
-            except OSError:
-                done = False
+
+        with h5py.File(filename, mode=mode) as f:
+            self.log.info(f"saving {dataset_str} for {subject}")
+            for i, hemi in enumerate(["lh", "rh"]):
+                shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
+                # create dataset
+                dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
+                # save prediction in dataset
+                dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
+                if dataset_str == "prediction":
+                    # save threshold as attribute in dataset
+                    dset.attrs["threshold"] = self.threshold
 
     def per_subject_stats(self, subject, prediction, labels, fold=None, suffix=""):
         """calculate stats per subject.

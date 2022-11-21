@@ -7,7 +7,7 @@
 import os
 import sys
 import argparse
-import subprocess as sub
+from subprocess import Popen, STDOUT, DEVNULL
 import glob
 from meld_classifier.paths import MELD_DATA_PATH, FS_SUBJECTS_PATH
 
@@ -67,13 +67,11 @@ if __name__ == '__main__':
             freeview = format(f"freeview -cmd {file_text}")
             command = ini_freesurfer + ';' + freeview
             print(f"INFO : Open freeview")
-            sub.check_call(command, shell=True)
+
+            proc = Popen(command, shell=True, stdout=DEVNULL, stderr=STDOUT)
+            proc.wait()
             os.remove(file_text)
             
         else:
             print('Could not find either T1 volume')
             pass
-    
-    
-
-    
