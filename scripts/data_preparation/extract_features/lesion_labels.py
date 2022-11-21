@@ -27,14 +27,12 @@ def lesion_labels(subject_id, subjects_dir, verbose=False):
 
 
 if __name__ == "__main__":
-    #parse commandline arguments pointing to subject_dir etc
-    parser = argparse.ArgumentParser(description='create lesion labels')
-    parser.add_argument('subject_id', type=str,
-                        help='subject_id')
-    parser.add_argument('subjects_dir', type=str,
-                        help='freesurfer subject directory ')
+    # parse commandline arguments pointing to subject_dir etc
+    parser = argparse.ArgumentParser(description="create lesion labels")
+    parser.add_argument("subject_id", type=str, help="subject_id")
+    parser.add_argument("subjects_dir", type=str, help="freesurfer subject directory ")
     args = parser.parse_args()
-    #save subjects dir and subject ids. import the text file containing subject ids
-    subject_id=args.subject_id
-    subjects_dir=args.subject_id
+    # save subjects dir and subject ids. import the text file containing subject ids
+    subject_id = args.subject_id
+    subjects_dir = args.subject_id
     lesion_labels(subject_id, subjects_dir)
