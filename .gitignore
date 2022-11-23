@@ -2,3 +2,5 @@ data/*
 *.log
 *__pycache__
 *.egg-info
+meld_config.ini
+tmp.png
