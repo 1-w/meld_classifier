@@ -1,4 +1,4 @@
-#Contains MeldCohort and MeldSubject classes
+# Contains MeldCohort and MeldSubject classes
 
 from contextlib import contextmanager
 from meld_classifier.paths import (
@@ -8,7 +8,7 @@ from meld_classifier.paths import (
     DEFAULT_HDF5_FILE_ROOT,
     NVERT,
     BASE_PATH,
-    MELD_PARAMS_PATH
+    MELD_PARAMS_PATH,
 )
 import pandas as pd
 import numpy as np
@@ -23,7 +23,10 @@ import scipy
 
 class MeldCohort:
     """Class to define cohort-level parameters such as subject ids, mesh"""
-    def __init__(self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH, meld_dir=MELD_PARAMS_PATH):
+
+    def __init__(
+        self, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None, data_dir=BASE_PATH, meld_dir=MELD_PARAMS_PATH
+    ):
         self.data_dir = data_dir
         self.meld_dir = meld_dir
         self.hdf5_file_root = hdf5_file_root
@@ -136,14 +139,14 @@ class MeldCohort:
         if self._coords is None:
             surf = mt.load_mesh_geometry(os.path.join(self.meld_dir, SURFACE_FILE))
             # spherical 2D coordinates. ignore radius
-        #    spherical_coords = mt.spherical_np(surf["coords"])[:, 1:]
+            #    spherical_coords = mt.spherical_np(surf["coords"])[:, 1:]
             # surf_coords_norm = (surf['coords']-np.min(surf['coords'],axis=0))/(np.max(surf['coords'],axis=0)-np.min(surf['coords'],axis=0))
-         #   norm_coords = (spherical_coords - np.min(spherical_coords, axis=0)) / (
-          #      np.max(spherical_coords, axis=0) - np.min(spherical_coords, axis=0)
-          #  )
+            #   norm_coords = (spherical_coords - np.min(spherical_coords, axis=0)) / (
+            #      np.max(spherical_coords, axis=0) - np.min(spherical_coords, axis=0)
+            #  )
             # round to have around 1500 unique coordinates
-          #  rounded_norm_coords = np.round(norm_coords * 5, 1) / 5
-            self._coords = surf["coords"] #rounded_norm_coords
+            #  rounded_norm_coords = np.round(norm_coords * 5, 1) / 5
+            self._coords = surf["coords"]  # rounded_norm_coords
         return self._coords
 
     def read_subject_ids_from_dataset(self):
@@ -164,7 +167,6 @@ class MeldCohort:
                 sites.append(f.split("_")[-1])
         return sites
 
-    @contextmanager
     def _site_hdf5(self, site_code, group, write=False, hdf5_file_root=None):
         """
         Hdf5 file handle for specified site_code and group (patient or control).
@@ -183,7 +185,6 @@ class MeldCohort:
             write (optional): flag to open hdf5 file with writing permissions, or to create
                 the hdf5 if it does not exist.
 
-        Yields: a pointer to the opened hdf5 file.
         """
         if hdf5_file_root is None:
             hdf5_file_root = self.hdf5_file_root
@@ -198,11 +199,14 @@ class MeldCohort:
             f = h5py.File(p, "a")
         else:
             f = None
-        try:
-            yield f
-        finally:
-            if f is not None:
-                f.close()
+
+        return f
+
+        # try:
+        #     yield f
+        # finally:
+        #     if f is not None:
+        #         f.close()
 
     def get_subject_ids(self, **kwargs):
         """Output list of subject_ids.
@@ -250,12 +254,13 @@ class MeldCohort:
         subject_ids = []
         for site_code in site_codes:
             for group in groups:
-                with self._site_hdf5(site_code, group) as f:
-                    if f is None:
-                        continue
-                    cur_scanners = f[site_code].keys()
-                    for scanner in cur_scanners:
-                        subject_ids += list(f[os.path.join(site_code, scanner, group)].keys())
+                f = self._site_hdf5(site_code, group)
+                if f is None:
+                    continue
+                cur_scanners = f[site_code].keys()
+                for scanner in cur_scanners:
+                    subject_ids += list(f[os.path.join(site_code, scanner, group)].keys())
+                f.close()
 
         self.log.info(f"total number of subjects: {len(subject_ids)}")
 
@@ -428,13 +433,14 @@ class MeldSubject:
         if not self.is_patient:
             return None
 
-        with self.cohort._site_hdf5(self.site_code, self.group) as f:
-            surf_dir_lh = f.require_group(self.surf_dir_path("lh"))
-            if ".on_lh.lesion.mgh" in surf_dir_lh.keys():
-                return "lh"
-            surf_dir_rh = f.require_group(self.surf_dir_path("rh"))
-            if ".on_lh.lesion.mgh" in surf_dir_rh.keys():
-                return "rh"
+        f = self.cohort._site_hdf5(self.site_code, self.group)
+        surf_dir_lh = f.require_group(self.surf_dir_path("lh"))
+        if ".on_lh.lesion.mgh" in surf_dir_lh.keys():
+            return "lh"
+        surf_dir_rh = f.require_group(self.surf_dir_path("rh"))
+        if ".on_lh.lesion.mgh" in surf_dir_rh.keys():
+            return "rh"
+        f.close()
         return None
 
     def has_features(self, features):
@@ -443,13 +449,14 @@ class MeldSubject:
 
     def get_feature_list(self, hemi="lh"):
         """Outputs a list of the features a participant has for each hemisphere"""
-        with self.cohort._site_hdf5(self.site_code, self.group) as f:
-            keys = list(f[self.surf_dir_path(hemi)].keys())
-            # remove lesion and boundaries from list of features
-            if ".on_lh.lesion.mgh" in keys:
-                keys.remove(".on_lh.lesion.mgh")
-            if ".on_lh.boundary_zone.mgh" in keys:
-                keys.remove(".on_lh.boundary_zone.mgh")
+        f = self.cohort._site_hdf5(self.site_code, self.group)
+        keys = list(f[self.surf_dir_path(hemi)].keys())
+        # remove lesion and boundaries from list of features
+        if ".on_lh.lesion.mgh" in keys:
+            keys.remove(".on_lh.lesion.mgh")
+        if ".on_lh.boundary_zone.mgh" in keys:
+            keys.remove(".on_lh.boundary_zone.mgh")
+        f.close()
         return keys
 
     def get_demographic_features(
@@ -542,12 +549,13 @@ class MeldSubject:
         """
         feature_values = np.zeros(NVERT, dtype=np.float32)
         # read data from hdf5
-        with self.cohort._site_hdf5(self.site_code, self.group) as f:
-            surf_dir = f[self.surf_dir_path(hemi)]
-            if feature in surf_dir.keys():
-                feature_values[:] = surf_dir[feature][:]
-            else:
-                self.log.debug(f"missing feature: {feature} set to zero")
+        f = self.cohort._site_hdf5(self.site_code, self.group)
+        surf_dir = f[self.surf_dir_path(hemi)]
+        if feature in surf_dir.keys():
+            feature_values[:] = surf_dir[feature][:]
+        else:
+            self.log.debug(f"missing feature: {feature} set to zero")
+        f.close()
         return feature_values
 
     def load_feature_lesion_data(self, features, hemi="lh", features_to_ignore=[]):
@@ -636,16 +644,17 @@ class MeldSubject:
             hdf5_file_context = self.cohort._site_hdf5(
                 self.site_code, self.group, write=True, hdf5_file_root=hdf5_file_root
             )
-        with hdf5_file_context as f:
 
-            for i, hemi in enumerate(hemis):
-                group = f.require_group(self.surf_dir_path(hemi))
-                hemi_data = np.zeros(NVERT)
-                hemi_data[self.cohort.cortex_mask] = feature_values[i * n_vert_cortex : (i + 1) * n_vert_cortex]
-                dset = group.require_dataset(
-                    feature, shape=(NVERT,), dtype="float32", compression="gzip", compression_opts=9
-                )
-                dset[:] = hemi_data
+        for i, hemi in enumerate(hemis):
+            group = hdf5_file_context.require_group(self.surf_dir_path(hemi))
+            hemi_data = np.zeros(NVERT)
+            hemi_data[self.cohort.cortex_mask] = feature_values[i * n_vert_cortex : (i + 1) * n_vert_cortex]
+            dset = group.require_dataset(
+                feature, shape=(NVERT,), dtype="float32", compression="gzip", compression_opts=9
+            )
+            dset[:] = hemi_data
+
+        hdf5_file_context.close()
 
     def delete(self, f, feat):
         print("delete")

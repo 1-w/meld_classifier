@@ -82,16 +82,16 @@ class ExperimentComparison:
                         )
                     )
                     # get data parameters (needed to know how to filter subjects)
-                    data_parameters = json.load(
-                        open(
-                            os.path.join(
-                                self.experiment_path,
-                                folder,
-                                "fold_{}".format(fold),
-                                "data_parameters_{}_{}.json".format(experiment_variable, param),
-                            )
+                    with open(
+                        os.path.join(
+                            self.experiment_path,
+                            folder,
+                            "fold_{}".format(fold),
+                            "data_parameters_{}_{}.json".format(experiment_variable, param),
                         )
-                    )
+                    ) as f:
+                        data_parameters = json.load(f)
+
                     subject_ids = self.filter_subjects(
                         list(fold_dict["patients"].keys()), hdf5_file_root=data_parameters["hdf5_file_root"]
                     )

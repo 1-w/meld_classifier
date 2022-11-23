@@ -24,8 +24,8 @@ def get_data_parameters():
         "experiment_folder":"output/classifier_outputs", 
         "expected_prediction_hdf5_file" : os.path.join("results", "predictions_ensemble_iteration_expected.hdf5"),
         "prediction_hdf5_file" : os.path.join("results", "predictions_ensemble_iteration.hdf5"),
-        "expected_prediction_nii_file" : "{}.prediction_expected.nii",
-        "prediction_nii_file" : "{}.prediction.nii"
+        "expected_prediction_nii_file" : "{}.prediction_expected.nii.gz",
+        "prediction_nii_file" : "{}.prediction.nii.gz"
     }
     return data_parameters
 
@@ -48,10 +48,8 @@ def test_predict_newsubject():
 
     # create text file with subject id
     list_txt_file_path = os.path.join(MELD_DATA_PATH, data_parameters['list_txt_file'])
-    f= open(list_txt_file_path,"w+")
-    f.write(subject)
-    f.close()
-
+    with open(list_txt_file_path,"w+") as f:
+        f.write(subject)
 
     # call script run_script_prediction.py
     print("calling")

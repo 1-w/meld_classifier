@@ -18,14 +18,17 @@ import tensorflow as tf
 def _update_subj_ids(data_param_file, ensemble_experiments):
     train_ids = []
     for exp in ensemble_experiments:
-        params = json.load(open(os.path.join(exp[0], f"data_parameters_{exp[1]}.json"), "r"))
+        with open(os.path.join(exp[0], f"data_parameters_{exp[1]}.json"), "r") as f:
+            params = json.load(f)
         train_ids.extend(params["train_ids"])
     train_ids = list(np.unique(train_ids))
 
-    params = json.load(open(data_param_file, "r"))
+    with open(data_param_file, "r") as f:
+        params = json.load(f)
     params["train_ids"] = train_ids
     params["val_ids"] = []
-    json.dump(params, open(data_param_file, "w"), indent=4)
+    with open(data_param_file, "w") as f:
+        json.dump(params, f, indent=4)
 
 
 def create_ensemble(experiment_name, experiment_path, ensemble_experiments, ensemble_folds=False):
@@ -156,7 +159,7 @@ if __name__ == "__main__":
             print("Saving to {} with name {}".format(experiment_dir, experiment_name))
             create_ensemble(experiment_name, experiment_dir, ensemble_experiments, ensemble_folds=args.ensemble_folds)
             # these ensembles can be evaluated on their val set
-#            evaluate_ensemble(experiment_name, experiment_dir)
+            #            evaluate_ensemble(experiment_name, experiment_dir)
 
             ensemble_experiments = []
 

@@ -1,16 +1,16 @@
 from meld_classifier.experiment import Experiment
 from meld_classifier.meld_cohort import MeldCohort, MeldSubject
 from meld_classifier.dataset import load_combined_hemisphere_data, Dataset, normalise_data
-from meld_classifier.meld_plotting import trim,rotate90
+from meld_classifier.meld_plotting import trim, rotate90
 from meld_classifier.paths import (
     MELD_PARAMS_PATH,
     MELD_DATA_PATH,
     DK_ATLAS_FILE,
-    EXPERIMENT_PATH, 
+    EXPERIMENT_PATH,
     MODEL_PATH,
     MODEL_NAME,
     FINAL_SCALING_PARAMS,
-    SURFACE_PARTIAL, 
+    SURFACE_PARTIAL,
     DEFAULT_HDF5_FILE_ROOT,
     SCRIPTS_DIR,
 )
@@ -33,125 +33,141 @@ import meld_classifier.mesh_tools as mt
 from datetime import date
 from fpdf import FPDF
 
-class PDF(FPDF):    
+
+class PDF(FPDF):
     def lines(self):
         self.set_line_width(0.0)
-        self.line(5.0,5.0,205.0,5.0) # top one
-        self.line(5.0,292.0,205.0,292.0) # bottom one
-        self.line(5.0,5.0,5.0,292.0) # left one
-        self.line(205.0,5.0,205.0,292.0) # right one
-    
+        self.line(5.0, 5.0, 205.0, 5.0)  # top one
+        self.line(5.0, 292.0, 205.0, 292.0)  # bottom one
+        self.line(5.0, 5.0, 5.0, 292.0)  # left one
+        self.line(205.0, 5.0, 205.0, 292.0)  # right one
+
     def custom_header(self, logo, txt1, txt2=None):
         # Log
         self.image(logo, 10, 8, 33)
-        # Arial bold 
-        self.set_font('Arial', 'B', 30)
+        # Arial bold
+        self.set_font("Arial", "B", 30)
         # Move to the right
         self.cell(80)
         # Title
-        self.cell(w=30, h=10, txt=txt1, border=0, ln=0, align='C')
+        self.cell(w=30, h=10, txt=txt1, border=0, ln=0, align="C")
         if txt2 != None:
             # Arial bold 15
             self.ln(20)
             self.cell(80)
-            self.set_font('Arial', 'B', 20)
-            self.cell(w=30, h=5, txt=txt2, border=0, ln=0, align='C')
+            self.set_font("Arial", "B", 20)
+            self.cell(w=30, h=5, txt=txt2, border=0, ln=0, align="C")
         # Line break
         self.ln(20)
-    
+
     def custom_footer(self, txt):
         # Arial italic 8
-        self.set_font('Arial', 'I', 8)
+        self.set_font("Arial", "I", 8)
         # Position at 1.5 cm from bottom
         self.set_y(-30)
         # add text
-        self.cell(w=0, h=0, txt=txt, border=0, ln=2, align='C') 
+        self.cell(w=0, h=0, txt=txt, border=0, ln=2, align="C")
         # Date
         today = date.today()
         today = today.strftime("%d/%m/%Y")
-        self.cell(w=5, h=8, txt=str(today) , border=0, ln=0, align='L')
+        self.cell(w=5, h=8, txt=str(today), border=0, ln=0, align="L")
         # Page number
-        self.cell(w=180, h=8, txt='Page ' + str(self.page_no()), border=0, ln=2, align='R')
-                
-    
+        self.cell(w=180, h=8, txt="Page " + str(self.page_no()), border=0, ln=2, align="R")
+
     def info_box(self, txt):
         # set font
-        self.set_font('Arial', 'I', 10)
-        #set box color
-        self.set_fill_color(160,214,190)
+        self.set_font("Arial", "I", 10)
+        # set box color
+        self.set_fill_color(160, 214, 190)
         # add texte box info
-        self.multi_cell(w=190, h=5, txt=txt , border=1, align='L', fill=True)
-        
+        self.multi_cell(w=190, h=5, txt=txt, border=1, align="L", fill=True)
+
     def info_box_clust(self, txt):
         self.ln(140)
         # set font
-        self.set_font('Arial', 'I', 6)
-        #set box color
-        self.set_fill_color(160,214,190)
+        self.set_font("Arial", "I", 6)
+        # set box color
+        self.set_fill_color(160, 214, 190)
         # add text box info
-        self.multi_cell(w=80, h=5, txt=txt , border=1, align='L', fill=True)
-    
+        self.multi_cell(w=80, h=5, txt=txt, border=1, align="L", fill=True)
+
     def disclaimer_box(self, txt):
         # set font
-        self.set_font('Arial', 'I', 6)
-        #set box color
-        self.set_fill_color(240,128,128)
+        self.set_font("Arial", "I", 6)
+        # set box color
+        self.set_fill_color(240, 128, 128)
         # add texte box info
-        self.multi_cell(w=190, h=5, txt=txt , border=1, align='L', fill=True)
-        
+        self.multi_cell(w=190, h=5, txt=txt, border=1, align="L", fill=True)
+
     def subtitle_inflat(self):
         # Arial bold 15
-        self.set_font('Arial', 'B', 20)
+        self.set_font("Arial", "B", 20)
         # Title
-        self.cell(w=10, h=80, txt='Overview clusters on inflated brain', border=0, ln=2, align='L')
-       
-    def imagey(self,im, y):
-        self.image(im, 5, y, link='', type='', w=190, h=297/3)
+        self.cell(w=10, h=80, txt="Overview clusters on inflated brain", border=0, ln=2, align="L")
 
-        
-def load_prediction(subject,hdf5):
-    results={}
+    def imagey(self, im, y):
+        self.image(im, 5, y, link="", type="", w=190, h=297 / 3)
+
+
+def load_prediction(subject, hdf5):
+    results = {}
     with h5py.File(hdf5, "r") as f:
-        for hemi in ['lh','rh']:
-            results[hemi] = f[subject][hemi]['prediction'][:]
+        for hemi in ["lh", "rh"]:
+            results[hemi] = f[subject][hemi]["prediction"][:]
     return results
 
-def create_surface_plots(surf,prediction,c):
+
+def create_surface_plots(surf, prediction, c):
     """plot and reload surface images"""
-    cmap, colors =  load_cmap()
-    msp.plot_surf(surf['coords'],
-                                           surf['faces'],prediction,
-              rotate=[90],
-              mask=prediction==0,pvals=np.ones_like(c.cortex_mask),
-              colorbar=False,vmin=1,vmax=len(colors) ,cmap=cmap,
-              base_size=20,
-              filename='tmp.png'
-             );
-#    subprocess.call(f"convert ./tmp.png -trim ./tmp1.png", shell=True)
-    im = Image.open('tmp.png')
+    cmap, colors = load_cmap()
+    msp.plot_surf(
+        surf["coords"],
+        surf["faces"],
+        prediction,
+        rotate=[90],
+        mask=prediction == 0,
+        pvals=np.ones_like(c.cortex_mask),
+        colorbar=False,
+        vmin=1,
+        vmax=len(colors),
+        cmap=cmap,
+        base_size=20,
+        filename="tmp.png",
+    )
+    #    subprocess.call(f"convert ./tmp.png -trim ./tmp1.png", shell=True)
+    im = Image.open("tmp.png")
     im = trim(im)
     im = im.convert("RGBA")
     im1 = np.array(im)
-    msp.plot_surf(surf['coords'],
-                                           surf['faces'],prediction,
-              rotate=[270],
-              mask=prediction==0,pvals=np.ones_like(c.cortex_mask),
-              colorbar=False,vmin=1,vmax=len(colors),cmap=cmap,
-              base_size=20,
-              filename='tmp.png'
-             );
- #   subprocess.call(f"convert ./tmp.png -trim ./tmp1.png", shell=True)
-    im = Image.open('tmp.png')
+    msp.plot_surf(
+        surf["coords"],
+        surf["faces"],
+        prediction,
+        rotate=[270],
+        mask=prediction == 0,
+        pvals=np.ones_like(c.cortex_mask),
+        colorbar=False,
+        vmin=1,
+        vmax=len(colors),
+        cmap=cmap,
+        base_size=20,
+        filename="tmp.png",
+    )
+    #   subprocess.call(f"convert ./tmp.png -trim ./tmp1.png", shell=True)
+    im = Image.open("tmp.png")
     im = trim(im)
     im = im.convert("RGBA")
     im2 = np.array(im)
-    plt.close('all')
-    return im1,im2
+    im.close()
+    plt.close("all")
+    return im1, im2
+
 
 def load_cluster(file, subject):
-    df=pd.read_csv(file,index_col=False)
-    n_clusters = df[df['ID']==subject]['n_clusters']
+    df = pd.read_csv(file, index_col=False)
+    n_clusters = df[df["ID"] == subject]["n_clusters"]
     return np.array(n_clusters)[0]
+
 
 def get_key(dic, val):
     # function to return key for any value in dictionnary
@@ -160,26 +176,27 @@ def get_key(dic, val):
             return key
     return "No key for value {}".format(val)
 
+
 def define_atlas():
     atlas = nb.freesurfer.io.read_annot(os.path.join(MELD_PARAMS_PATH, DK_ATLAS_FILE))
     vertex_i = np.array(atlas[0]) - 1000  # subtract 1000 to line up vertex
-    rois_prop = [
-        np.count_nonzero(vertex_i == x) for x in set(vertex_i)
-    ]  # proportion of vertex per rois
+    rois_prop = [np.count_nonzero(vertex_i == x) for x in set(vertex_i)]  # proportion of vertex per rois
     rois = [x.decode("utf8") for x in atlas[2]]  # extract rois label from the atlas
     rois = dict(zip(rois, range(len(rois))))  # extract rois label from the atlas
     rois.pop("unknown")  # roi not part of the cortex
     rois.pop("corpuscallosum")  # roi not part of the cortex
     return rois, vertex_i, rois_prop
 
+
 def get_cluster_location(cluster_array):
     cluster_array = np.array(cluster_array)
     rois, vertex_i, rois_prop = define_atlas()
     pred_rois = list(vertex_i[cluster_array])
     pred_rois = np.array([[x, pred_rois.count(x)] for x in set(pred_rois) if x != 0])
-    ind = pred_rois[np.where(pred_rois == pred_rois[:,1].max())[0]][0][0]
-    location = get_key(rois,ind)
+    ind = pred_rois[np.where(pred_rois == pred_rois[:, 1].max())[0]][0][0]
+    location = get_key(rois, ind)
     return location
+
 
 def save_mgh(filename, array, demo):
     """save mgh file using nibabel and imported demo mgh file"""
@@ -188,53 +205,63 @@ def save_mgh(filename, array, demo):
     output = nb.MGHImage(mmap, demo.affine, demo.header)
     nb.save(output, filename)
 
+
 def load_cmap():
-    """ create the colors dictionarry for the clusters"""
+    """create the colors dictionarry for the clusters"""
     from matplotlib.colors import ListedColormap
     import numpy as np
-    colors =  [
-        [255,0,0],     #red
-        [255,215,0],   #gold
-        [0,0,255],     #blue
-        [0,128,0],     #green
-        [148,0,211],   #darkviolet
-        [255,0,255],   #fuchsia
-        [255,165,0],   #orange
-        [0,255,255],   #cyan
-        [0,255,0],     #lime
-        [106,90,205],  #slateblue
-        [240,128,128], #lightcoral
-        [184,134,11],  #darkgoldenrod
-        [100,149,237], #cornflowerblue
-        [102,205,170], #mediumaquamarine
-        [75,0,130],    #indigo
-        [250,128,114], #salmon
-        [240,230,140], #khaki
-        [176,224,230], #powderblue
-        [128,128,0],   #olive
-        [221,160,221], #plum
-        [255,127,80],  #coral
-        [255,250,205], #lemonchiffon
-        [240,255,255], #azure
-        [152,251,152], #palegreen
-        [255,192,203], #pink
+
+    colors = [
+        [255, 0, 0],  # red
+        [255, 215, 0],  # gold
+        [0, 0, 255],  # blue
+        [0, 128, 0],  # green
+        [148, 0, 211],  # darkviolet
+        [255, 0, 255],  # fuchsia
+        [255, 165, 0],  # orange
+        [0, 255, 255],  # cyan
+        [0, 255, 0],  # lime
+        [106, 90, 205],  # slateblue
+        [240, 128, 128],  # lightcoral
+        [184, 134, 11],  # darkgoldenrod
+        [100, 149, 237],  # cornflowerblue
+        [102, 205, 170],  # mediumaquamarine
+        [75, 0, 130],  # indigo
+        [250, 128, 114],  # salmon
+        [240, 230, 140],  # khaki
+        [176, 224, 230],  # powderblue
+        [128, 128, 0],  # olive
+        [221, 160, 221],  # plum
+        [255, 127, 80],  # coral
+        [255, 250, 205],  # lemonchiffon
+        [240, 255, 255],  # azure
+        [152, 251, 152],  # palegreen
+        [255, 192, 203],  # pink
     ]
-    colors=np.array(colors)/255
-    dict_c = dict(zip(np.arange(1, len(colors)+1), colors))
+    colors = np.array(colors) / 255
+    dict_c = dict(zip(np.arange(1, len(colors) + 1), colors))
     cmap = ListedColormap(colors)
     return cmap, dict_c
 
+
 def generate_prediction_report(
-    subject_ids, data_dir, hdf_predictions, output_dir, 
-    experiment_path=EXPERIMENT_PATH, experiment_name=MODEL_NAME, hdf5_file_root=DEFAULT_HDF5_FILE_ROOT, dataset=None):
-    ''' Create images and report of predictions on inflated brain, on native T1 accompanied with saliencies explaining the predictions
-    inputs: 
+    subject_ids,
+    data_dir,
+    hdf_predictions,
+    output_dir,
+    experiment_path=EXPERIMENT_PATH,
+    experiment_name=MODEL_NAME,
+    hdf5_file_root=DEFAULT_HDF5_FILE_ROOT,
+    dataset=None,
+):
+    """Create images and report of predictions on inflated brain, on native T1 accompanied with saliencies explaining the predictions
+    inputs:
         subject_ids: subjects ID
         data_dir: data directory containing the T1. Should be "input" in MELD structure
         hdf_predictions: hdf5 containing the MELD predictions
         exp: an experiment initialised
         output_dir: directory to save final reports
-        '''
+    """
     # setup parameters
     base_feature_sets = [
         ".on_lh.gm_FLAIR_0.5.sm10.mgh",
@@ -331,7 +358,7 @@ def generate_prediction_report(
             features_hemis[hemi], labels_hemis[hemi] = subject.load_feature_lesion_data(
                 features, hemi=hemi, features_to_ignore=[]
             )
-            scaling_parameter_file=FINAL_SCALING_PARAMS
+            scaling_parameter_file = FINAL_SCALING_PARAMS
             features_hemis[hemi] = normalise_data(features_hemis[hemi], features, scaling_parameter_file)
             # get prediction
             predictions[hemi] = np.zeros(len(c.cortex_mask))
@@ -534,50 +561,47 @@ if __name__ == "__main__":
         default="ensemble_iteration",
     )
     parser.add_argument("--fold", default=None, help="fold number to use (by default all)")
+    parser.add_argument("--data_dir", default="", help="folder containing the input data T1 and FLAIR")
+    parser.add_argument("--output_dir", default="", help="folder containing the output prediction and reports")
     parser.add_argument(
-        "--data_dir", default="", help="folder containing the input data T1 and FLAIR"
+        "-ids",
+        "--subject_list",
+        default="",
+        help="Relative path to subject List containing id and site_code.",
+        required=False,
     )
-    parser.add_argument(
-        "--output_dir", default="", help="folder containing the output prediction and reports"
-    )
-    parser.add_argument("-ids","--subject_list",
-                        default="",
-                        help="Relative path to subject List containing id and site_code.",
-                        required=False,
-    )
-    parser.add_argument('-id','--id',
-                    help='Subjects ID',
-                    required=False,
-                    default=None)
+    parser.add_argument("-id", "--id", help="Subjects ID", required=False, default=None)
     args = parser.parse_args()
-    fold=args.fold
-    data_dir=args.data_dir
-    output_dir=args.output_dir
+    fold = args.fold
+    data_dir = args.data_dir
+    output_dir = args.output_dir
     subject_ids = np.loadtxt(args.list_ids, dtype="str", ndmin=1)
     experiment_path = os.path.join(MELD_DATA_PATH, args.experiment_folder)
-    experiment_name=args.experiment_name
+    experiment_name = args.experiment_name
     model_path = os.path.join(EXPERIMENT_PATH, MODEL_PATH)
 
     if args.list_ids:
         try:
             sub_list_df = pd.read_csv(args.list_ids)
-            subject_ids=np.array(sub_list_df.participant_id.values)
+            subject_ids = np.array(sub_list_df.participant_id.values)
         except:
-            subject_ids=np.array(np.loadtxt(args.list_ids, dtype='str', ndmin=1))     
+            subject_ids = np.array(np.loadtxt(args.list_ids, dtype="str", ndmin=1))
     elif args.id:
-        subject_ids=np.array([args.id])
+        subject_ids = np.array([args.id])
     else:
-        print('No ids were provided')
-        subject_ids=None
+        print("No ids were provided")
+        subject_ids = None
 
     # select predictions files
     if fold == None:
         hdf_predictions = os.path.join(experiment_path, "results", f"predictions_{experiment_name}.hdf5")
     else:
-        hdf_predictions = os.path.join(experiment_path, f"fold_{fold}", "results", f"predictions_{experiment_name}.hdf5")
-       
+        hdf_predictions = os.path.join(
+            experiment_path, f"fold_{fold}", "results", f"predictions_{experiment_name}.hdf5"
+        )
+
     # Provide models parameter
-    exp = Experiment(experiment_path= model_path, experiment_name=experiment_name)
+    exp = Experiment(experiment_path=model_path, experiment_name=experiment_name)
 
     generate_prediction_report(
         subject_ids,

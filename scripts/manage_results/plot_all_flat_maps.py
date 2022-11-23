@@ -3,7 +3,7 @@ import os
 import json
 from meld_classifier.network_tools import build_model
 from meld_classifier.experiment import get_subject_ids
-from meld_classifier.meld_plotting import trim,rotate90
+from meld_classifier.meld_plotting import trim, rotate90
 import meld_classifier.hdf5_io as io
 from meld_classifier.paths import MELD_PARAMS_PATH, EXPERIMENT_PATH
 import numpy as np
@@ -55,9 +55,9 @@ def plot_single_subject(data_to_plots, lesion, feature_names=None, out_filename=
             filename=out_filename,
         )
         plt.close()
-        #subprocess.call(f"convert {out_filename} -trim ./tmp{random}1.png", shell=True)
-        #subprocess.call(f"convert ./tmp{random}1.png -rotate 90 {out_filename}", shell=True)
-        #os.remove(f"./tmp{random}1.png")
+        # subprocess.call(f"convert {out_filename} -trim ./tmp{random}1.png", shell=True)
+        # subprocess.call(f"convert ./tmp{random}1.png -rotate 90 {out_filename}", shell=True)
+        # os.remove(f"./tmp{random}1.png")
         im = Image.open(out_filename)
         im = trim(im)
         im = rotate90(im)
@@ -73,6 +73,7 @@ def plot_single_subject(data_to_plots, lesion, feature_names=None, out_filename=
         draw = ImageDraw.Draw(im)
         draw.text((100, 0), f_name, (255, 0, 0), font=fnt)
         arr_im = np.array(im.convert("RGBA"))
+        im.close()
         s0 = np.min([base.shape[0], arr_im.shape[0]])
         s1 = np.min([base.shape[1], arr_im.shape[1]])
         base[:s0, :s1, :3] = arr_im[:s0, :s1, :3]
@@ -123,7 +124,8 @@ def plot_reports_for_experiment(experiments_folder, experiment, date, fold, para
     ]
     experiment_path = os.path.join(experiments_folder, f"{experiment}_{date}", f"fold_{fold}")
     experiment_name = experiment + "_" + param
-    data_parameters = json.load(open(os.path.join(experiment_path, "data_parameters_{}.json".format(experiment_name))))
+    with open(os.path.join(experiment_path, "data_parameters_{}.json".format(experiment_name))) as f:
+        data_parameters = json.load(f)
     listids, features = get_subject_ids(data_parameters, verbose=False)
     cortex = np.sort(
         nb.freesurfer.io.read_label(os.path.join(MELD_PARAMS_PATH, "fsaverage_sym", "label", "lh.cortex.label"))
@@ -137,9 +139,8 @@ def plot_reports_for_experiment(experiments_folder, experiment, date, fold, para
 
     # setup network
     if "test" not in subset:
-        network_parameters = json.load(
-            open(os.path.join(experiment_path, "network_parameters_{}.json".format(experiment_name)))
-        )
+        with open(os.path.join(experiment_path, "network_parameters_{}.json".format(experiment_name))) as f:
+            network_parameters = json.load(f)
         n_features = get_n_features(data_parameters, features)
         checkpoint_path = os.path.join(experiment_path, "models", experiment_name)
         model = build_model(
@@ -226,5 +227,6 @@ if __name__ == "__main__":
     # Set up model
     experiment_path = os.path.join(experiments_folder, f"{experiment}_{date}", f"fold_{fold}")
     experiment_name = experiment + "_" + param
-    data_parameters = json.load(open(os.path.join(experiment_path, "data_parameters_{}.json".format(experiment_name))))
+    with open(os.path.join(experiment_path, "data_parameters_{}.json".format(experiment_name))) as f:
+        data_parameters = json.load(f)
     plot_reports_for_experiment(experiments_folder, experiment, date, fold, param, subset=subset)

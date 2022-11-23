@@ -215,7 +215,10 @@ def distributedCombat_central(site_outs, ref_batch=None, verbose=False, file=Non
             "Must specify filename to output results as a file. Currently saving output to current workspace only."
         )
         file = None
-    site_outs = [pickle.load(open(site_out, "rb")) for site_out in site_outs]
+    site_outs = []
+    for site_out in site_outs:
+        with open(site_out, "rb") as f:
+            site_outs.append(pickle.load(f))
     m = len(site_outs)  # number of sites
     # get n.batches and n.array from sites
     batch_levels = site_outs[0]["data_dict"]["batch"].cat.categories

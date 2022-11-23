@@ -101,7 +101,7 @@ def call_merge_predictions_t1(subject_ids, subjects_dir, output_dir, verbose=Fal
         # initialise
         t1_file=glob.glob(opj(subjects_dir, subject_id, 'T1', '*T1*.nii*'))[0]
         output_dir = opj(output_dir, subject_id, 'predictions')
-        prediction_file=opj(output_dir, 'prediction.nii')
+        prediction_file=opj(output_dir, 'prediction.nii.gz')
 
         call_merge_predictions_t1(subject_id, t1_file, prediction_file, output_dir, verbose)
 

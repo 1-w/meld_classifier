@@ -1,5 +1,5 @@
-#Tools for mesh-based operations
-#Smoothing, 
+# Tools for mesh-based operations
+# Smoothing,
 import nibabel as nb
 import numpy as np
 import subprocess
@@ -14,6 +14,7 @@ def find_nearest_multi(array, value):
     min_array = new_array.min()
     idx = [i for i, val in enumerate(new_array) if val == min_array]
     return idx
+
 
 def calibrate_smoothing(coords, faces, start_v=125000, n_iter=70, cortex_mask=None):
     """find the calibratin curve for smoothing of a surface mesh"""
@@ -37,10 +38,10 @@ def calibrate_smoothing(coords, faces, start_v=125000, n_iter=70, cortex_mask=No
     # smooth the array at each iteration and find the full-width-at-half-maximum of non-null area
     fwhm_values = []
     for iteration in np.arange(n_iter):
-        
-        new_array = smooth_array(old_array,neighbours,n_iter=1,cortex_mask=cortex_mask)
+
+        new_array = smooth_array(old_array, neighbours, n_iter=1, cortex_mask=cortex_mask)
         # This is the smoothing function
-        
+
         old_array = new_array.copy()
         # threshold at half maximum value
         max_pic = old_array.max()
@@ -61,6 +62,7 @@ def calibrate_smoothing(coords, faces, start_v=125000, n_iter=70, cortex_mask=No
     print("End of calibration")
     return line, model(line)
 
+
 def smooth_array(input_array, neighbours, n_iter=70, cortex_mask=None):
     """smooth a matrix of surface data surface data
     input_array: variable to be smoothed n_vert x n_subs
@@ -69,8 +71,8 @@ def smooth_array(input_array, neighbours, n_iter=70, cortex_mask=None):
                                   10mm fwhm = 70 iterations
     cortex_mask: binary mask of cortex eg cohort.cortex_mask"""
     dim = len(input_array.shape)
-    if dim==1:
-        input_array=input_array.reshape(-1,1)
+    if dim == 1:
+        input_array = input_array.reshape(-1, 1)
     old_array = input_array.T
     if cortex_mask is not None:
         for v, n in enumerate(neighbours):
@@ -78,24 +80,25 @@ def smooth_array(input_array, neighbours, n_iter=70, cortex_mask=None):
             neighbours[v] = n[cortex_mask[n]]
     else:
         cortex_mask = np.ones(len(neighbours), dtype=bool)
-    #neighbours mask & array
-    neighbours_array = np.zeros((len(neighbours),7),dtype=int)
-    neighbours_mask=np.ones((len(neighbours),7),dtype=bool)
-    #create masked array
-    for ni,n in enumerate(neighbours):
-        neighbours_array[ni,:len(neighbours[ni])]=neighbours[ni]
-        neighbours_mask[ni,:len(neighbours[ni])]=False
-        neighbours_array[ni,len(neighbours[ni])]=ni
-        neighbours_mask[ni,len(neighbours[ni])]=False
-                         
-    size=input_array.shape[1]
+    # neighbours mask & array
+    neighbours_array = np.zeros((len(neighbours), 7), dtype=int)
+    neighbours_mask = np.ones((len(neighbours), 7), dtype=bool)
+    # create masked array
+    for ni, n in enumerate(neighbours):
+        neighbours_array[ni, : len(neighbours[ni])] = neighbours[ni]
+        neighbours_mask[ni, : len(neighbours[ni])] = False
+        neighbours_array[ni, len(neighbours[ni])] = ni
+        neighbours_mask[ni, len(neighbours[ni])] = False
+
+    size = input_array.shape[1]
     for iteration in np.arange(n_iter):
-        arr=np.ma.masked_array(old_array[:,neighbours_array],np.tile(neighbours_mask,(size,1,1)))
+        arr = np.ma.masked_array(old_array[:, neighbours_array], np.tile(neighbours_mask, (size, 1, 1)))
         new_array = arr.mean(axis=2)
         old_array = new_array
-    if dim==1:
+    if dim == 1:
         return np.squeeze(new_array.data)
     return new_array.data.T
+
 
 def save_mgh(filename, array, demo):
     """save mgh file using nibabel and imported demo mgh file"""
@@ -355,28 +358,29 @@ def read_obj(file):
                 return result
             result.append(offset)
 
-    fp = open(file, "r")
-    n_vert = []
-    n_poly = []
-    k = 0
-    Polys = []
-    # Find number of vertices and number of polygons, stored in .obj file.
-    # Then extract list of all vertices in polygons
-    for i, line in enumerate(fp):
-        if i == 0:
-            # Number of vertices
-            n_vert = int(line.split()[6])
-            XYZ = np.zeros([n_vert, 3])
-        elif i <= n_vert:
-            XYZ[i - 1] = list(map(float, line.split()))
-        elif i > 2 * n_vert + 5:
-            if not line.strip():
-                k = 1
-            elif k == 1:
-                Polys.extend(line.split())
-    Polys = list(map(int, Polys))
-    npPolys = np.array(Polys)
-    triangles = np.array(list(chunks(Polys, 3)))
+    with open(file, "r") as fp:
+        n_vert = []
+        n_poly = []
+        k = 0
+        Polys = []
+        # Find number of vertices and number of polygons, stored in .obj file.
+        # Then extract list of all vertices in polygons
+        for i, line in enumerate(fp):
+            if i == 0:
+                # Number of vertices
+                n_vert = int(line.split()[6])
+                XYZ = np.zeros([n_vert, 3])
+            elif i <= n_vert:
+                XYZ[i - 1] = list(map(float, line.split()))
+            elif i > 2 * n_vert + 5:
+                if not line.strip():
+                    k = 1
+                elif k == 1:
+                    Polys.extend(line.split())
+        Polys = list(map(int, Polys))
+        npPolys = np.array(Polys)
+        triangles = np.array(list(chunks(Polys, 3)))
+        
     return XYZ, triangles
 
 

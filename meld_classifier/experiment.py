@@ -102,10 +102,12 @@ class Experiment:
         self.path = experiment_path
         self.name = experiment_name
         self._log = None
-        self.data_parameters = json.load(open(os.path.join(self.path, "data_parameters_{}.json".format(self.name))))
-        self.network_parameters = json.load(
-            open(os.path.join(self.path, "network_parameters_{}.json".format(self.name)))
-        )
+        with open(os.path.join(self.path, "data_parameters_{}.json".format(self.name))) as f:
+            self.data_parameters = json.load(f)
+
+        with open(os.path.join(self.path, "network_parameters_{}.json".format(self.name))) as f:
+            self.network_parameters = json.load(f)
+
         self.cohort = MeldCohort(
             hdf5_file_root=self.data_parameters["hdf5_file_root"], dataset=self.data_parameters["dataset"]
         )
@@ -152,10 +154,12 @@ class Experiment:
         """
         # data_parameters
         fname = os.path.join(experiment_path, "data_parameters_{}.json".format(experiment_name))
-        json.dump(data_parameters, open(fname, "w"), indent=4)
+        with open(fname, "w") as f:
+            json.dump(data_parameters, f, indent=4)
         # network_parameters
         fname = os.path.join(experiment_path, "network_parameters_{}.json".format(experiment_name))
-        json.dump(network_parameters, open(fname, "w"), indent=4)
+        with open(fname, "w") as f:
+            json.dump(network_parameters, f, indent=4)
 
     def save_parameters(self):
         return Experiment.save_experiment_parameters(

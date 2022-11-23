@@ -131,11 +131,11 @@ class Preprocess:
     def save_norm_combat_parameters(self, feature, estimates, hdf5_file):
         """Save estimates from combat and normalisation parameters on hdf5"""
         if not os.path.isfile(hdf5_file):
-            hdf5_file_context = h5py.File(hdf5_file, "a")
+            hdf5_file_context =  "a"
         else:
-            hdf5_file_context = h5py.File(hdf5_file, "r+")
+            hdf5_file_context =  "r+"
 
-        with hdf5_file_context as f:
+        with h5py.File(hdf5_file, hdf5_file_context) as f:
             list_params = list(set(estimates))
             for parameter_name in list_params:
                 parameter = estimates[parameter_name]
@@ -157,9 +157,8 @@ class Preprocess:
 
     def read_norm_combat_parameters(self, feature, hdf5_file):
         """reconstruct estimates dictionnary from the combat parameters hdf5 file"""
-        hdf5_file_context = h5py.File(hdf5_file, "r")
         estimates = {}
-        with hdf5_file_context as f:
+        with h5py.File(hdf5_file, "r") as f:
             feat_dir = f[feature]
             parameters = feat_dir.keys()
             for param in parameters:

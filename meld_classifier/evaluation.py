@@ -90,8 +90,8 @@ class Evaluator:
                 subject_ids = test_ids
             self.patient_ids, self.control_ids = self.divide_subjects(subject_ids, n_controls=5)
             self.combined_ids = list(self.patient_ids) + list(self.control_ids)
-            if mode == "train":  
-                 #if we're training, i.e. optimising threshold, this is only done using patients
+            if mode == "train":
+                # if we're training, i.e. optimising threshold, this is only done using patients
                 self.combined_ids = self.patient_ids
             self.log.info(
                 f"Initialized Evaluation with mode {self.mode}, thresh {self.threshold} on {len(self.patient_ids)} patients and {len(self.control_ids)} controls"
@@ -573,7 +573,9 @@ class Evaluator:
         # saliency
         if saliency:
             # TODO might want to make method and target configureable parameters
-            data_dictionary = self.saliency(data_dictionary=data_dictionary, method=["integrated_gradients"], target=["pred"])
+            data_dictionary = self.saliency(
+                data_dictionary=data_dictionary, method=["integrated_gradients"], target=["pred"]
+            )
             # save saliency
             dataset_str = "integrated_gradients_pred"
             self.save_prediction(
@@ -590,7 +592,7 @@ class Evaluator:
         # plot prediction
         if plot:
             self.plot_report_prediction(subj_id, subject_features, prediction, labels)
-        
+
         return
 
     def save_prediction(self, subject, prediction, dataset_str="prediction", suffix="", dtype=np.uint8):
@@ -616,22 +618,19 @@ class Evaluator:
         else:
             mode = "r+"
         done = False
-        while not done:
-            try:
-                with h5py.File(filename, mode=mode) as f:
-                    self.log.info(f"saving {dataset_str} for {subject}")
-                    for i, hemi in enumerate(["lh", "rh"]):
-                        shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
-                        # create dataset
-                        dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
-                        # save prediction in dataset
-                        dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
-                        if dataset_str == "prediction":
-                            # save threshold as attribute in dataset
-                            dset.attrs["threshold"] = self.threshold
-                    done = True
-            except OSError:
-                done = False
+
+        with h5py.File(filename, mode=mode) as f:
+            self.log.info(f"saving {dataset_str} for {subject}")
+            for i, hemi in enumerate(["lh", "rh"]):
+                shape = tuple([nvert_hemi] + list(prediction.shape[1:]))
+                # create dataset
+                dset = f.require_dataset(f"{subject}/{hemi}/{dataset_str}", shape=shape, dtype=dtype)
+                # save prediction in dataset
+                dset[:] = prediction[i * nvert_hemi : (i + 1) * nvert_hemi]
+                if dataset_str == "prediction":
+                    # save threshold as attribute in dataset
+                    dset.attrs["threshold"] = self.threshold
+            done = True
 
     def per_subject_stats(self, subject, prediction, labels, fold=None, suffix=""):
         """calculate stats per subject.
@@ -806,5 +805,6 @@ def save_json(json_filename, json_results):
     Save dictionaries to json
     """
     # data_parameters
-    json.dump(json_results, open(json_filename, "w"), indent=4)
+    with open(json_filename, "w") as f:
+        json.dump(json_results, f, indent=4)
     return

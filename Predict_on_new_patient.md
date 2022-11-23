@@ -162,8 +162,8 @@ After viewing these images, we recommend then viewing the predictions superimpos
 
 The predictions are saved as NIFTI files in the folder: 
 /output/predictions_reports/<subject_id>/predictions
-- prediction.nii corresponds to the prediction mask for the whole brain
-- lh.prediction.nii and rh.prediction.nii correspond to the predictions masks for left and right hemispheres
+- prediction.nii.gz corresponds to the prediction mask for the whole brain
+- lh.prediction.nii.gz and rh.prediction.nii.gz correspond to the predictions masks for left and right hemispheres
 
 ***NEW***: You can merge the MELD predictions onto the T1 nifti file using the command below. Note that you will need to have [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation) installed on your machine. 
 ```bash
