@@ -1,8 +1,9 @@
 import os
 import argparse
-# from subprocess import Popen,  STDOUT, DEVNULL
+
 import shutil
-from meld_classifier.tools_commands_prints import get_m, run_command
+from meld_classifier.tools_commands_prints import get_m
+from subprocess import Popen, DEVNULL, STDOUT
 
 
 def move_to_xhemi_flip(subject_id, subjects_dir, verbose=False):
@@ -30,34 +31,41 @@ def move_to_xhemi_flip(subject_id, subjects_dir, verbose=False):
         )
 
         command = f"SUBJECTS_DIR={subjects_dir} mris_calc --output {subjects_dir}/{subject_id}/xhemi/surf_meld/zeros.mgh {subjects_dir}/{subject_id}/xhemi/surf_meld/zeros.mgh set 0"
-        # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-        proc = run_command(command, verbose=verbose)
+        if verbose:
+            stdout = STDOUT
+        else:
+            stdout = DEVNULL
+        proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
         proc.wait()
 
-    print(get_m(f'Move feature to xhemi flip', subject_id, 'INFO'))
+    print(get_m(f"Move feature to xhemi flip", subject_id, "INFO"))
     for measure in measures:
         if not os.path.isfile(f"{subjects_dir}/{subject_id}/xhemi/surf_meld/lh.on_lh.{measure}"):
             command = f"SUBJECTS_DIR={subjects_dir} mris_apply_reg --src {subjects_dir}/{subject_id}/surf_meld/lh.{measure} --trg {subjects_dir}/{subject_id}/xhemi/surf_meld/lh.on_lh.{measure} --streg {subjects_dir}/{subject_id}/surf/lh.sphere.reg {subjects_dir}/fsaverage_sym/surf/lh.sphere.reg"
-            # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-            proc = run_command(command, verbose=verbose)
+            if verbose:
+                stdout = STDOUT
+            else:
+                stdout = DEVNULL
+            proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
             proc.wait()
 
         if not os.path.isfile(f"{subjects_dir}/{subject_id}/xhemi/surf_meld/rh.on_lh.{measure}"):
             command = f"SUBJECTS_DIR={subjects_dir} mris_apply_reg --src {subjects_dir}/{subject_id}/surf_meld/rh.{measure} --trg {subjects_dir}/{subject_id}/xhemi/surf_meld/rh.on_lh.{measure} --streg {subjects_dir}/{subject_id}/xhemi/surf/lh.fsaverage_sym.sphere.reg {subjects_dir}/fsaverage_sym/surf/lh.sphere.reg"
-            # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-            proc = run_command(command, verbose=verbose)
+            if verbose:
+                stdout = STDOUT
+            else:
+                stdout = DEVNULL
+            proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
             proc.wait()
 
 
 if __name__ == "__main__":
-    #parse commandline arguments pointing to subject_dir etc
-    parser = argparse.ArgumentParser(description='move freesurfer volume to xhemi')
-    parser.add_argument('subject_id', type=str,
-                        help='subject_id')
-    parser.add_argument('subjects_dir', type=str,
-                        help='freesurfer subject directory ')
+    # parse commandline arguments pointing to subject_dir etc
+    parser = argparse.ArgumentParser(description="move freesurfer volume to xhemi")
+    parser.add_argument("subject_id", type=str, help="subject_id")
+    parser.add_argument("subjects_dir", type=str, help="freesurfer subject directory ")
     args = parser.parse_args()
-    #save subjects dir and subject ids. import the text file containing subject ids
-    subject_id=args.subject_id
-    subjects_dir=args.subject_id
+    # save subjects dir and subject ids. import the text file containing subject ids
+    subject_id = args.subject_id
+    subjects_dir = args.subject_id
     move_to_xhemi_flip(subject_id, subjects_dir)

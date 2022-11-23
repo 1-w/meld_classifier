@@ -617,7 +617,6 @@ class Evaluator:
             mode = "a"
         else:
             mode = "r+"
-        done = False
 
         with h5py.File(filename, mode=mode) as f:
             self.log.info(f"saving {dataset_str} for {subject}")
@@ -630,7 +629,6 @@ class Evaluator:
                 if dataset_str == "prediction":
                     # save threshold as attribute in dataset
                     dset.attrs["threshold"] = self.threshold
-            done = True
 
     def per_subject_stats(self, subject, prediction, labels, fold=None, suffix=""):
         """calculate stats per subject.

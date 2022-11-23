@@ -15,7 +15,6 @@ import sys
 import argparse
 import subprocess
 
-# from subprocess import Popen, DEVNULL, STDOUT, check_call
 import threading
 import multiprocessing
 from functools import partial
@@ -32,6 +31,8 @@ from meld_classifier.meld_cohort import MeldCohort
 from meld_classifier.data_preprocessing import Preprocess
 from os.path import join as opj
 from meld_classifier.tools_commands_prints import get_m
+
+from subprocess import Popen, STDOUT, DEVNULL
 
 
 def init(lock):
@@ -97,7 +98,11 @@ def fastsurfer_subject(subject, fs_folder, verbose=False):
     print(get_m("Start cortical parcellation (up to 2h). Please wait", subject_id, "INFO"))
     print(get_m(f"Results will be stored in {fs_folder}", subject_id, "INFO"))
     starting.acquire()  # no other process can get it until it is released
-    proc = run_command(command, verbose=verbose)
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
     threading.Timer(120, starting.release).start()  # release in two minutes
     proc.wait()
     print(get_m(f"Finished cortical parcellation", subject_id, "INFO"))
@@ -145,8 +150,11 @@ def fastsurfer_flair(subject, fs_folder, verbose=False):
             fs_folder, subject_id, subject_flair_path
         )
     )
-    # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-    proc = run_command(command, verbose=verbose)
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
     proc.wait()
     print(get_m("Finished FLAIRpial", subject_id, "INFO"))
 
@@ -230,14 +238,18 @@ def freesurfer_subject(subject, fs_folder, verbose=False):
     print(get_m("Start cortical parcellation (up to 36h). Please wait", subject_id, "INFO"))
     print(get_m(f"Results will be stored in {fs_folder}", subject_id, "INFO"))
     starting.acquire()  # no other process can get it until it is released
-    # proc = Popen(command, shell=True, stdout = DEVNULL, stderr=STDOUT)
-    proc = run_command(command, verbose=verbose)
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(command, shell=True, stdout=stdout, stderr=STDOUT)
+
+    threading.Timer(120, starting.release).start()  # release in two minutes
+    proc.wait()
     if proc.returncode == 0:
         print(get_m("Finished cortical parcellation", subject_id, "INFO"))
     else:
         print(get_m("Something went wrong during segmentation. Check the recon-all log", subject_id, "WARNING"))
-    threading.Timer(120, starting.release).start()  # release in two minutes
-    proc.wait()
 
 
 def extract_features(subject_id, fs_folder, output_dir, verbose=False):
@@ -323,8 +335,12 @@ def run_subjects_segmentation_and_smoothing_parallel(
 
     ### SEGMENTATION ###
     ini_freesurfer = format("$FREESURFER_HOME/SetUpFreeSurfer.sh")
-    proc = run_command(ini_freesurfer)
-
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(ini_freesurfer, shell=True, stdout=stdout, stderr=STDOUT)
+    proc.wait()
     ## Make a directory for the outputs
     fs_folder = FS_SUBJECTS_PATH
     os.makedirs(fs_folder, exist_ok=True)
@@ -369,9 +385,12 @@ def run_subject_segmentation_and_smoothing(subject, site_code="", use_fastsurfer
 
     ### SEGMENTATION ###
     ini_freesurfer = format("$FREESURFER_HOME/SetUpFreeSurfer.sh")
-    # check_call(ini_freesurfer, shell=True, stdout = DEVNULL, stderr=STDOUT)
-    proc = run_command(ini_freesurfer)
-
+    if verbose:
+        stdout = STDOUT
+    else:
+        stdout = DEVNULL
+    proc = Popen(ini_freesurfer, shell=True, stdout=stdout, stderr=STDOUT)
+    proc.wait()
     ## Make a directory for the outputs
     fs_folder = FS_SUBJECTS_PATH
     os.makedirs(fs_folder, exist_ok=True)
